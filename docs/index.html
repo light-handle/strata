@@ -521,8 +521,8 @@
         </div>
         <div class="feature-card">
           <div class="icon">&#9776;</div>
-          <h3>Session Browser</h3>
-          <p>Searchable list of all sessions grouped by project. Click any session to fly the camera to its terrain peak. See prompts, token breakdown, tool usage, and duration.</p>
+          <h3>Conversation Timeline</h3>
+          <p>Replay any session turn by turn. Every prompt, response, <strong>thinking block</strong>, tool call, tool result, and subagent invocation rendered in a scrollable timeline. Thinking blocks collapse with a brain icon. Tool calls show smart previews &mdash; the command for Bash, the file path for Read/Write. Chunked rendering handles 100+ turn sessions.</p>
         </div>
         <div class="feature-card">
           <div class="icon">&#9889;</div>
@@ -634,6 +634,43 @@
         <div class="shortcut-item">
           <kbd>&#8679;Space</kbd>
           <span>Reset camera</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Roadmap -->
+  <section class="how-it-works">
+    <div class="container">
+      <h2>Roadmap</h2>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num" style="background: var(--primary); color: var(--bg); border-color: var(--primary);">&#10003;</div>
+          <div class="step-content">
+            <h4>Conversation Timeline</h4>
+            <p>Full session replay with prompts, responses, thinking blocks, tool calls, tool results, and subagent invocations. Collapsible sections, smart tool previews, chunked rendering.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-content">
+            <h4>Subagent Tree</h4>
+            <p>Expandable nested timelines for subagent conversations. Visualize parallel execution as a branching tree off the parent session &mdash; some sessions spawn 20+ subagents doing concurrent research.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-content">
+            <h4>Tool Execution Gantt Chart</h4>
+            <p>D3 Gantt chart showing every tool call over time. Color-coded by tool type. Reveals bursts of parallel execution, long-running commands, and rapid file read sequences.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-content">
+            <h4>Session Replay</h4>
+            <p>A play button that steps through the conversation chronologically, revealing each message with the original timing. Like watching a recording of the coding session.</p>
+          </div>
         </div>
       </div>
     </div>

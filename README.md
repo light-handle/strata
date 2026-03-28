@@ -40,6 +40,9 @@ A full 3D heightfield with Gaussian-smoothed peaks, marching-squares contour lin
 ### Project Drill-Down
 The right panel shows all your projects as interactive tiles with mini session treemaps. Click any project to drill into it — see session count, total tokens, and message stats at a glance, then browse every session in that project as cards with token bars and prompt previews. When you drill into a project, the terrain **highlights that project's peaks** and dims everything else, so you can instantly see where a project lives on the map.
 
+### Conversation Timeline
+Switch to the "Conversation" tab on any session to replay the full exchange. Every user prompt, Claude response, thinking block, tool call, tool result, and subagent invocation is rendered in a scrollable timeline. Thinking blocks are collapsed by default with a brain icon — click to expand Claude's internal reasoning. Tool calls show smart previews (the command for Bash, the file path for Read/Write, the pattern for Grep) and expand to full JSON input. Tool results are collapsible with error highlighting. Time gap indicators mark pauses longer than 60 seconds. Chunked rendering handles sessions with hundreds of turns.
+
 ### Session Browser
 Every session across all your projects, grouped and searchable. Click any session to fly the camera to its terrain peak and see full details — prompts, token breakdown by type (input/output/cache read/cache write), tool usage with bar charts, and the last exchange.
 
@@ -166,11 +169,12 @@ strata/
     context/          App state (panel visibility, selection, camera target)
     components/
       terrain/        3D terrain (mesh, contours, camera, markers, labels)
+      timeline/       Conversation timeline (prompts, responses, thinking, tools)
       panels/         Session list, project drill-down, session detail, analytics
       charts/         D3 activity timeline, project bars
       CommandPalette  Cmd+K fuzzy search
       HUDBar          Top status bar with live clock
-    hooks/            WebSocket, keyboard shortcuts
+    hooks/            WebSocket, keyboard shortcuts, session messages
     lib/              Terrain math (Gaussian smoothing, marching squares), formatters
 ```
 
@@ -183,6 +187,22 @@ strata/
 | Server port | `3141` | Express + WebSocket |
 | Client port | `5173` | Vite dev server |
 | Claude dir | `~/.claude/projects/` | Auto-detected |
+
+---
+
+## Roadmap
+
+### Conversation Timeline (shipped)
+Full conversation replay within the session detail panel. Switch between Summary and Conversation tabs to browse every prompt, response, thinking block, tool call, and subagent invocation. Thinking blocks are collapsible. Tool calls show compact previews with expandable full input/output. Time gap indicators mark pauses in the conversation.
+
+### Subagent Tree (planned)
+Expandable nested timelines for subagent conversations. When a session spawns subagents, visualize them as a branching tree off the parent timeline. Each subagent's full conversation is loadable on demand. The mcpspec project, for example, has sessions with 26 parallel subagents doing web research — this would render as a striking parallel execution tree.
+
+### Tool Execution Gantt Chart (planned)
+D3 Gantt-chart style visualization showing tool calls over time. X-axis = time, each horizontal bar = one tool execution. Color-coded by tool type (Bash = orange, Read = teal, Write = blue, etc.). Reveals patterns like bursts of parallel tool calls, long-running Bash commands, and rapid file read sequences. Unique to Strata — no other Claude Code tool offers this view.
+
+### Session Replay (planned)
+A "play" button that steps through the conversation chronologically, revealing each message/tool call/thinking block one at a time with the original timing. Like watching a recording of the coding session unfold in real-time.
 
 ---
 

@@ -119,6 +119,48 @@ export interface DashboardData {
   }
 }
 
+// ── Conversation Timeline ──
+
+export type TimelineBlockType =
+  | 'user-prompt'
+  | 'thinking'
+  | 'text'
+  | 'tool-use'
+  | 'tool-result'
+  | 'system'
+  | 'subagent'
+
+export interface TimelineBlock {
+  id: string
+  timestamp: string
+  type: TimelineBlockType
+  text?: string
+  thinkingText?: string
+  toolName?: string
+  toolInput?: Record<string, unknown>
+  toolUseId?: string
+  toolResultForId?: string
+  toolResultContent?: string
+  toolResultIsError?: boolean
+  subagentId?: string
+  subagentType?: string
+  subagentPrompt?: string
+  systemSubtype?: string
+}
+
+export interface SubagentInfo {
+  agentId: string
+  agentType: string
+  messageCount: number
+}
+
+export interface TimelineResponse {
+  sessionId: string
+  blocks: TimelineBlock[]
+  subagents: SubagentInfo[]
+  totalRawMessages: number
+}
+
 // ── WebSocket events ──
 
 export type WSEvent =

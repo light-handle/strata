@@ -30,7 +30,7 @@ function truncate(s: string, maxLen = 200): string {
   return s.slice(0, maxLen) + '…'
 }
 
-function parseJSONLFile(filePath: string): RawMessage[] {
+export function parseJSONLFile(filePath: string): RawMessage[] {
   try {
     const content = fs.readFileSync(filePath, 'utf-8')
     const lines = content.split('\n').filter((l) => l.trim())
