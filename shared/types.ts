@@ -161,6 +161,18 @@ export interface TimelineResponse {
   totalRawMessages: number
 }
 
+// ── Tool Execution (for Gantt chart) ──
+
+export interface ToolExecution {
+  toolUseId: string
+  toolName: string
+  startTime: string
+  endTime: string
+  durationMs: number
+  toolInput?: Record<string, unknown>
+  row?: number  // assigned during layout
+}
+
 // ── WebSocket events ──
 
 export type WSEvent =

@@ -7,6 +7,7 @@ interface AppState {
   commandPaletteOpen: boolean
   selectedSessionId: string | null
   selectedProjectName: string | null
+  ganttOpen: boolean
   cameraTarget: { x: number; y: number; z: number } | null
 }
 
@@ -20,6 +21,8 @@ type Action =
   | { type: 'DESELECT_SESSION' }
   | { type: 'SELECT_PROJECT'; name: string }
   | { type: 'DESELECT_PROJECT' }
+  | { type: 'OPEN_GANTT' }
+  | { type: 'CLOSE_GANTT' }
   | { type: 'FLY_TO'; target: { x: number; y: number; z: number } }
 
 const initialState: AppState = {
@@ -29,6 +32,7 @@ const initialState: AppState = {
   commandPaletteOpen: false,
   selectedSessionId: null,
   selectedProjectName: null,
+  ganttOpen: false,
   cameraTarget: null,
 }
 
@@ -75,6 +79,10 @@ function reducer(state: AppState, action: Action): AppState {
         selectedProjectName: null,
         selectedSessionId: null,
       }
+    case 'OPEN_GANTT':
+      return { ...state, ganttOpen: true }
+    case 'CLOSE_GANTT':
+      return { ...state, ganttOpen: false }
     case 'FLY_TO':
       return { ...state, cameraTarget: action.target }
     default:

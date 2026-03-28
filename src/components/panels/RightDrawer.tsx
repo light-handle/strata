@@ -300,13 +300,19 @@ function SessionDetailView({ session }: { session: SessionSummary }) {
               className={`pill ${tab === 'conversation' ? 'active' : ''}`}
               onClick={() => setTab('conversation')}
             >
-              Conversation
+              Chat
+            </button>
+            <button
+              className="pill"
+              onClick={() => dispatch({ type: 'OPEN_GANTT' })}
+            >
+              Tools
             </button>
           </div>
         </div>
       </div>
 
-      {/* Conversation tab */}
+      {/* Tab content */}
       {tab === 'conversation' ? (
         <ConversationTimeline sessionId={session.id} />
       ) : (
