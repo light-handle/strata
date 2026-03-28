@@ -46,6 +46,9 @@ Click "Chat" on any session to open a full-width modal replaying the entire conv
 ### Tool Execution Gantt Chart
 Click "Tools" to open a wide-screen Gantt chart showing every tool call as a horizontal bar on a time axis. Color-coded by tool type, with parallel tools on separate rows. Hover for duration and input preview, click for full tool input JSON. Shows total execution time and max parallelism.
 
+### Subagent Tree
+Click "Agents" on any session with subagents to open a dedicated tree visualization. The left panel shows the parent session as the root node with subagent branches — each displaying agent type, message count, and prompt preview. Click any node to load its full conversation in the right panel. Navigate between parent and subagent conversations to understand the full execution tree.
+
 ### Session Browser
 All sessions grouped by project, searchable. Automatically filters when you drill into a project from the right panel — shows a "Filtered to {project}" indicator with a clear button.
 Every session across all your projects, grouped and searchable. Click any session to fly the camera to its terrain peak and see full details — prompts, token breakdown by type (input/output/cache read/cache write), tool usage with bar charts, and the last exchange.
@@ -195,9 +198,6 @@ strata/
 ---
 
 ## Roadmap
-
-### Subagent Tree (planned)
-Expandable nested timelines for subagent conversations. Visualize parallel subagent execution as a branching tree off the parent timeline.
 
 ### Session Replay (planned)
 A "play" button that steps through the conversation chronologically, revealing each message/tool call/thinking block one at a time with the original timing. Like watching a recording of the coding session unfold in real-time.

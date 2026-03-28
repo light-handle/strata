@@ -530,6 +530,11 @@
           <p>Wide-screen Gantt chart showing every tool call on a time axis. Color-coded by tool type, parallel tools on separate rows. Hover for details, click for full input JSON. Shows total execution time and max parallelism.</p>
         </div>
         <div class="feature-card">
+          <div class="icon">&#9741;</div>
+          <h3>Subagent Tree</h3>
+          <p>Dedicated tree visualization for sessions with subagents. Parent session as root, subagent branches with type badges and message counts. Click any node to load its full conversation. Navigate the entire execution tree.</p>
+        </div>
+        <div class="feature-card">
           <div class="icon">&#9889;</div>
           <h3>Live Updates</h3>
           <p>WebSocket + chokidar watches your Claude files in real-time. Start a session in another terminal and watch the terrain grow as tokens flow.</p>
@@ -664,10 +669,10 @@
           </div>
         </div>
         <div class="step">
-          <div class="step-num">3</div>
+          <div class="step-num" style="background: var(--primary); color: var(--bg); border-color: var(--primary);">&#10003;</div>
           <div class="step-content">
             <h4>Subagent Tree</h4>
-            <p>Expandable nested timelines for subagent conversations. Visualize parallel execution as a branching tree off the parent session.</p>
+            <p>Dedicated tree visualization with parent/subagent navigation and full conversation loading per node.</p>
           </div>
         </div>
         <div class="step">
