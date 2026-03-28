@@ -1,5 +1,7 @@
-import type { SessionSummary, ProjectSummary } from '../../../shared/types'
+import { useMemo } from 'react'
+import type { SessionSummary, ProjectSummary, DashboardData } from '../../../shared/types'
 import { useAppState, useAppDispatch } from '../../context/AppContext'
+import { mapSessionsToGrid, DEFAULT_CONFIG } from '../../lib/terrainUtils'
 import {
   formatTokens,
   formatDuration,
@@ -12,31 +14,56 @@ import {
 interface Props {
   sessions: SessionSummary[]
   projects: ProjectSummary[]
+  data?: DashboardData
 }
 
-export default function SessionDetail({ sessions, projects }: Props) {
-  const { selectedSessionId } = useAppState()
+export default function RightPanel({ sessions, projects, data }: Props) {
+  const { selectedSessionId, selectedProjectName } = useAppState()
   const session = sessions.find((s) => s.id === selectedSessionId)
+  const project = projects.find((p) => p.name === selectedProjectName)
+
+  // Build position map for camera navigation
+  const positionMap = useMemo(() => {
+    if (!data) return new Map<string, { x: number; y: number; z: number }>()
+    const { positions } = mapSessionsToGrid(data, DEFAULT_CONFIG)
+    const map = new Map<string, { x: number; y: number; z: number }>()
+    for (const pos of positions) {
+      map.set(pos.session.id, { x: pos.worldX, y: pos.height, z: pos.worldZ })
+    }
+    return map
+  }, [data])
+
+  // Determine which view to show
+  const view = session ? 'session' : project ? 'project' : 'overview'
+
+  const headerText = view === 'session' ? 'Detail' : view === 'project' ? project!.name : 'Projects'
+  const headerCount = view === 'session'
+    ? modelShortName(session!.model)
+    : view === 'project'
+      ? `${project!.sessionCount} sessions`
+      : `${projects.length} total`
 
   return (
     <div className="glass-panel h-full flex flex-col">
       <div className="glass-panel-header">
-        <span>{session ? 'Detail' : 'Projects'}</span>
-        <span className="count">
-          {session ? modelShortName(session.model) : `${projects.length} total`}
-        </span>
+        <span className="truncate">{headerText}</span>
+        <span className="count flex-shrink-0">{headerCount}</span>
       </div>
 
-      {!session ? (
+      {view === 'overview' && (
         <ProjectsOverview projects={projects} />
-      ) : (
+      )}
+      {view === 'project' && project && (
+        <ProjectDrillDown project={project} positionMap={positionMap} />
+      )}
+      {view === 'session' && session && (
         <SessionDetailView session={session} />
       )}
     </div>
   )
 }
 
-// ── Projects grid (default view) ──
+// ── Level 1: Projects overview (tiles + list) ──
 
 function ProjectsOverview({ projects }: { projects: ProjectSummary[] }) {
   const dispatch = useAppDispatch()
@@ -44,7 +71,6 @@ function ProjectsOverview({ projects }: { projects: ProjectSummary[] }) {
 
   return (
     <div className="flex-1 overflow-y-auto">
-      {/* Mini treemap grid */}
       <div className="p-2 grid grid-cols-2 gap-1.5">
         {projects.map((project) => {
           const intensity = project.totalTokens / maxTokens
@@ -60,29 +86,19 @@ function ProjectsOverview({ projects }: { projects: ProjectSummary[] }) {
                 border: `1px solid rgba(255, 180, 50, ${0.06 + intensity * 0.15})`,
                 minHeight: '68px',
               }}
-              onClick={() => {
-                // Select the first session of this project
-                const firstSession = project.sessions[0]
-                if (firstSession) {
-                  dispatch({ type: 'SELECT_SESSION', id: firstSession.id })
-                }
-              }}
+              onClick={() => dispatch({ type: 'SELECT_PROJECT', name: project.name })}
             >
               {/* Mini session blocks */}
               <div className="grid grid-cols-4 gap-px mb-2">
                 {project.sessions.slice(0, 12).map((s) => {
-                  const sTokens =
-                    s.totalInputTokens + s.totalOutputTokens +
-                    s.totalCacheReadTokens + s.totalCacheCreateTokens
+                  const sTokens = s.totalInputTokens + s.totalOutputTokens + s.totalCacheReadTokens + s.totalCacheCreateTokens
                   const sIntensity = Math.min(sTokens / maxTokens, 1)
-                  const r = Math.round(40 + sIntensity * 200)
-                  const g = Math.round(30 + sIntensity * 120)
                   return (
                     <div
                       key={s.id}
                       className="rounded-sm"
                       style={{
-                        background: `rgb(${r}, ${g}, ${Math.round(sIntensity * 20)})`,
+                        background: `rgb(${Math.round(40 + sIntensity * 200)}, ${Math.round(30 + sIntensity * 120)}, ${Math.round(sIntensity * 20)})`,
                         height: '5px',
                         opacity: 0.5 + sIntensity * 0.5,
                       }}
@@ -90,17 +106,11 @@ function ProjectsOverview({ projects }: { projects: ProjectSummary[] }) {
                   )
                 })}
               </div>
-
-              <div className="text-[9px] text-text-bright font-medium truncate leading-tight">
-                {project.name}
-              </div>
+              <div className="text-[9px] text-text-bright font-medium truncate">{project.name}</div>
               <div className="text-[8px] text-text-muted mt-0.5">
                 {formatTokens(project.totalTokens)} &middot; {project.sessionCount}s
               </div>
-
-              {/* Hover glow */}
-              <div
-                className="absolute inset-0 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
+              <div className="absolute inset-0 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
                 style={{ boxShadow: 'inset 0 0 12px rgba(255, 180, 50, 0.12)' }}
               />
             </div>
@@ -108,7 +118,7 @@ function ProjectsOverview({ projects }: { projects: ProjectSummary[] }) {
         })}
       </div>
 
-      {/* Project list below tiles */}
+      {/* List view below */}
       <div className="border-t border-border mt-1">
         {projects.map((project) => {
           const intensity = project.totalTokens / maxTokens
@@ -116,14 +126,8 @@ function ProjectsOverview({ projects }: { projects: ProjectSummary[] }) {
             <div
               key={project.path}
               className="flex items-center gap-2 px-3 py-2 border-b border-border/50 cursor-pointer hover:bg-surface-hover transition-colors"
-              onClick={() => {
-                const firstSession = project.sessions[0]
-                if (firstSession) {
-                  dispatch({ type: 'SELECT_SESSION', id: firstSession.id })
-                }
-              }}
+              onClick={() => dispatch({ type: 'SELECT_PROJECT', name: project.name })}
             >
-              {/* Intensity dot */}
               <div
                 className="w-2 h-2 rounded-full flex-shrink-0"
                 style={{
@@ -131,14 +135,12 @@ function ProjectsOverview({ projects }: { projects: ProjectSummary[] }) {
                   boxShadow: intensity > 0.5 ? `0 0 4px rgba(255,180,50,${intensity * 0.4})` : 'none',
                 }}
               />
-
               <div className="flex-1 min-w-0">
                 <div className="text-[10px] text-text-bright truncate">{project.name}</div>
                 <div className="text-[8px] text-text-muted">
                   {project.sessionCount} sessions &middot; {timeAgo(project.lastActiveTime)}
                 </div>
               </div>
-
               <div className="text-[9px] text-text-muted text-right flex-shrink-0">
                 {formatTokens(project.totalTokens)}
               </div>
@@ -150,10 +152,121 @@ function ProjectsOverview({ projects }: { projects: ProjectSummary[] }) {
   )
 }
 
-// ── Session detail view ──
+// ── Level 2: Project drill-down (all sessions for one project) ──
+
+function ProjectDrillDown({
+  project,
+  positionMap,
+}: {
+  project: ProjectSummary
+  positionMap: Map<string, { x: number; y: number; z: number }>
+}) {
+  const dispatch = useAppDispatch()
+
+  const totalTokens = project.totalTokens
+  const maxSessionTokens = Math.max(
+    ...project.sessions.map((s) =>
+      s.totalInputTokens + s.totalOutputTokens + s.totalCacheReadTokens + s.totalCacheCreateTokens
+    ), 1
+  )
+
+  // Sort sessions by start time descending
+  const sorted = [...project.sessions].sort((a, b) => b.startTime.localeCompare(a.startTime))
+
+  return (
+    <div className="flex-1 overflow-y-auto">
+      {/* Back */}
+      <div className="px-4 py-2 border-b border-border">
+        <button
+          onClick={() => dispatch({ type: 'DESELECT_PROJECT' })}
+          className="text-[9px] text-text-muted hover:text-primary transition-colors tracking-wider"
+        >
+          &larr; ALL PROJECTS
+        </button>
+      </div>
+
+      {/* Project stats */}
+      <div className="px-4 py-3 border-b border-border">
+        <div className="grid grid-cols-3 gap-1.5 text-center">
+          <div className="rounded p-2" style={{ background: 'rgba(8,8,12,0.6)', border: '1px solid rgba(255,180,50,0.06)' }}>
+            <div className="text-[8px] text-text-muted uppercase tracking-wider">Sessions</div>
+            <div className="text-[13px] font-medium text-primary mt-0.5">{project.sessionCount}</div>
+          </div>
+          <div className="rounded p-2" style={{ background: 'rgba(8,8,12,0.6)', border: '1px solid rgba(255,180,50,0.06)' }}>
+            <div className="text-[8px] text-text-muted uppercase tracking-wider">Tokens</div>
+            <div className="text-[13px] font-medium text-secondary mt-0.5">{formatTokens(totalTokens)}</div>
+          </div>
+          <div className="rounded p-2" style={{ background: 'rgba(8,8,12,0.6)', border: '1px solid rgba(255,180,50,0.06)' }}>
+            <div className="text-[8px] text-text-muted uppercase tracking-wider">Messages</div>
+            <div className="text-[13px] font-medium text-text-bright mt-0.5">{project.totalMessages}</div>
+          </div>
+        </div>
+        <div className="text-[8px] text-text-muted mt-2">
+          Last active {timeAgo(project.lastActiveTime)}
+        </div>
+      </div>
+
+      {/* Sessions list */}
+      <div className="px-2 py-2">
+        <div className="text-[9px] text-text-muted tracking-wider uppercase px-2 mb-2 font-semibold">
+          Sessions
+        </div>
+        {sorted.map((session) => {
+          const tokens = session.totalInputTokens + session.totalOutputTokens +
+            session.totalCacheReadTokens + session.totalCacheCreateTokens
+          const pct = (tokens / maxSessionTokens) * 100
+          const target = positionMap.get(session.id)
+
+          return (
+            <div
+              key={session.id}
+              className="rounded p-3 mb-1.5 cursor-pointer transition-all hover:brightness-110 border border-transparent hover:border-primary/20 group"
+              style={{ background: 'rgba(12,14,22,0.7)' }}
+              onClick={() => dispatch({
+                type: 'SELECT_SESSION',
+                id: session.id,
+                cameraTarget: target,
+              })}
+            >
+              {/* Prompt preview */}
+              <div className="text-[10px] text-text-bright leading-snug line-clamp-2 mb-2">
+                {session.firstUserPrompt || '(empty session)'}
+              </div>
+
+              {/* Token bar */}
+              <div className="h-1.5 rounded-full overflow-hidden mb-1.5" style={{ background: 'rgba(255,180,50,0.06)' }}>
+                <div
+                  className="h-full rounded-full transition-all"
+                  style={{ width: `${pct}%`, background: 'linear-gradient(90deg, #ffb832, #ff8800)' }}
+                />
+              </div>
+
+              {/* Meta */}
+              <div className="flex items-center gap-2 text-[8px] text-text-muted">
+                <span className="text-secondary">{modelShortName(session.model)}</span>
+                <span>{session.userMessageCount} prompts</span>
+                <span>{formatTokens(tokens)}</span>
+                <span>{formatDuration(session.durationMs)}</span>
+                <span className="ml-auto">{timeAgo(session.startTime)}</span>
+              </div>
+
+              {/* Fly-to hint */}
+              <div className="text-[8px] text-primary opacity-0 group-hover:opacity-100 transition-opacity mt-1">
+                click to view on terrain &rarr;
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// ── Level 3: Session detail ──
 
 function SessionDetailView({ session }: { session: SessionSummary }) {
   const dispatch = useAppDispatch()
+  const { selectedProjectName } = useAppState()
 
   const handleResume = async () => {
     try {
@@ -165,13 +278,13 @@ function SessionDetailView({ session }: { session: SessionSummary }) {
 
   return (
     <div className="flex-1 overflow-y-auto">
-      {/* Back button */}
+      {/* Back */}
       <div className="px-4 py-2 border-b border-border">
         <button
           onClick={() => dispatch({ type: 'DESELECT_SESSION' })}
           className="text-[9px] text-text-muted hover:text-primary transition-colors tracking-wider"
         >
-          &larr; BACK TO PROJECTS
+          &larr; {selectedProjectName ? `BACK TO ${selectedProjectName.toUpperCase()}` : 'BACK TO PROJECTS'}
         </button>
       </div>
 
@@ -180,6 +293,9 @@ function SessionDetailView({ session }: { session: SessionSummary }) {
         <div className="flex items-center gap-2 mb-1">
           <span className="text-primary text-[10px] font-semibold tracking-wider uppercase">
             {session.projectName}
+          </span>
+          <span className="text-[8px] px-1.5 py-0.5 rounded border border-border text-secondary">
+            {modelShortName(session.model)}
           </span>
           {session.gitBranch && session.gitBranch !== 'HEAD' && (
             <span className="text-[8px] text-text-muted">{session.gitBranch}</span>
@@ -195,9 +311,7 @@ function SessionDetailView({ session }: { session: SessionSummary }) {
       {/* First prompt */}
       <div className="px-4 py-3 border-b border-border">
         <div className="text-[9px] text-text-muted tracking-wider uppercase mb-1">First Prompt</div>
-        <div className="text-[11px] text-text-bright leading-relaxed">
-          {session.firstUserPrompt}
-        </div>
+        <div className="text-[11px] text-text-bright leading-relaxed">{session.firstUserPrompt}</div>
       </div>
 
       {/* Token breakdown */}
@@ -232,10 +346,7 @@ function SessionDetailView({ session }: { session: SessionSummary }) {
                 <div key={tc.name} className="flex items-center gap-2 text-[9px]">
                   <span className="w-14 text-text-muted truncate">{tc.name}</span>
                   <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,180,50,0.06)' }}>
-                    <div
-                      className="h-full rounded-full"
-                      style={{ width: `${pct}%`, background: 'linear-gradient(90deg, #ffb832, #ff8800)' }}
-                    />
+                    <div className="h-full rounded-full" style={{ width: `${pct}%`, background: 'linear-gradient(90deg, #ffb832, #ff8800)' }} />
                   </div>
                   <span className="text-text-muted w-5 text-right">{tc.count}</span>
                 </div>

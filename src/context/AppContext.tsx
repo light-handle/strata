@@ -6,6 +6,7 @@ interface AppState {
   bottomTrayOpen: boolean
   commandPaletteOpen: boolean
   selectedSessionId: string | null
+  selectedProjectName: string | null
   cameraTarget: { x: number; y: number; z: number } | null
 }
 
@@ -17,6 +18,8 @@ type Action =
   | { type: 'CLOSE_ALL_PANELS' }
   | { type: 'SELECT_SESSION'; id: string; cameraTarget?: { x: number; y: number; z: number } }
   | { type: 'DESELECT_SESSION' }
+  | { type: 'SELECT_PROJECT'; name: string }
+  | { type: 'DESELECT_PROJECT' }
   | { type: 'FLY_TO'; target: { x: number; y: number; z: number } }
 
 const initialState: AppState = {
@@ -25,6 +28,7 @@ const initialState: AppState = {
   bottomTrayOpen: false,
   commandPaletteOpen: false,
   selectedSessionId: null,
+  selectedProjectName: null,
   cameraTarget: null,
 }
 
@@ -54,7 +58,23 @@ function reducer(state: AppState, action: Action): AppState {
         cameraTarget: action.cameraTarget || state.cameraTarget,
       }
     case 'DESELECT_SESSION':
-      return { ...state, selectedSessionId: null, rightDrawerOpen: false }
+      return {
+        ...state,
+        selectedSessionId: null,
+        // Go back to project view if one is selected, otherwise projects overview
+      }
+    case 'SELECT_PROJECT':
+      return {
+        ...state,
+        selectedProjectName: action.name,
+        selectedSessionId: null,
+      }
+    case 'DESELECT_PROJECT':
+      return {
+        ...state,
+        selectedProjectName: null,
+        selectedSessionId: null,
+      }
     case 'FLY_TO':
       return { ...state, cameraTarget: action.target }
     default:

@@ -13,7 +13,7 @@ interface Props {
 
 export default function SessionMarkers({ data }: Props) {
   const dispatch = useAppDispatch()
-  const { selectedSessionId } = useAppState()
+  const { selectedSessionId, selectedProjectName } = useAppState()
   const { camera, gl } = useThree()
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null)
 
@@ -99,7 +99,9 @@ export default function SessionMarkers({ data }: Props) {
       {positions.map((pos, i) => {
         const isHovered = hoveredIdx === i
         const isSelected = selectedSessionId === pos.session.id
-        const isActive = isHovered || isSelected
+        const isProjectHighlighted = selectedProjectName !== null && pos.session.projectName === selectedProjectName
+        const isDimmed = selectedProjectName !== null && !isProjectHighlighted
+        const isActive = isHovered || isSelected || isProjectHighlighted
 
         return (
           <group key={pos.session.id}>
@@ -118,6 +120,7 @@ export default function SessionMarkers({ data }: Props) {
               z={pos.worldZ}
               height={pos.height}
               active={isActive}
+              dimmed={isDimmed}
             />
 
             {/* Diamond marker at peak */}
@@ -125,10 +128,11 @@ export default function SessionMarkers({ data }: Props) {
               position={[pos.worldX, pos.height + 0.6, pos.worldZ]}
               active={isActive}
               selected={isSelected}
+              dimmed={isDimmed}
             />
 
             {/* Ground ring — targeting reticle */}
-            {isActive && (
+            {isActive && !isDimmed && (
               <TargetRing
                 position={[pos.worldX, 0.15, pos.worldZ]}
               />
@@ -144,8 +148,8 @@ export default function SessionMarkers({ data }: Props) {
             >
               {/* Project name */}
               <Text
-                fontSize={isActive ? 1.0 : 0.7}
-                color={isActive ? '#ffcc44' : '#ffb832'}
+                fontSize={isActive && !isDimmed ? 1.0 : 0.7}
+                color={isDimmed ? '#333340' : isActive ? '#ffcc44' : '#ffb832'}
                 anchorX="center"
                 anchorY="bottom"
                 outlineWidth={0.04}
@@ -157,9 +161,9 @@ export default function SessionMarkers({ data }: Props) {
 
               {/* Token count below */}
               <Text
-                position={[0, isActive ? -1.1 : -0.8, 0]}
-                fontSize={isActive ? 0.7 : 0.5}
-                color={isActive ? '#00e5ff' : '#557788'}
+                position={[0, isActive && !isDimmed ? -1.1 : -0.8, 0]}
+                fontSize={isActive && !isDimmed ? 0.7 : 0.5}
+                color={isDimmed ? '#222230' : isActive ? '#00e5ff' : '#557788'}
                 anchorX="center"
                 anchorY="bottom"
                 outlineWidth={0.03}
@@ -192,12 +196,11 @@ export default function SessionMarkers({ data }: Props) {
 }
 
 /** Vertical beam line from ground to peak — military scan line */
-function VerticalBeam({ x, z, height, active }: { x: number; z: number; height: number; active: boolean }) {
+function VerticalBeam({ x, z, height, active, dimmed }: { x: number; z: number; height: number; active: boolean; dimmed: boolean }) {
   const meshRef = useRef<THREE.Mesh>(null)
 
-  // Pulse animation for active beams
   useFrame((state) => {
-    if (meshRef.current && active) {
+    if (meshRef.current && active && !dimmed) {
       const pulse = 0.6 + Math.sin(state.clock.elapsedTime * 3) * 0.15
       ;(meshRef.current.material as THREE.MeshBasicMaterial).opacity = pulse
     }
@@ -205,28 +208,22 @@ function VerticalBeam({ x, z, height, active }: { x: number; z: number; height: 
 
   return (
     <group>
-      {/* Thin beam */}
       <mesh
         ref={meshRef}
         position={[x, height / 2, z]}
       >
         <boxGeometry args={[0.06, height, 0.06]} />
         <meshBasicMaterial
-          color={active ? '#00e5ff' : '#ffb832'}
+          color={dimmed ? '#222230' : active ? '#00e5ff' : '#ffb832'}
           transparent
-          opacity={active ? 0.6 : 0.12}
+          opacity={dimmed ? 0.04 : active ? 0.6 : 0.12}
         />
       </mesh>
 
-      {/* Wider glow beam behind */}
-      {active && (
+      {active && !dimmed && (
         <mesh position={[x, height / 2, z]}>
           <boxGeometry args={[0.3, height, 0.3]} />
-          <meshBasicMaterial
-            color="#00e5ff"
-            transparent
-            opacity={0.06}
-          />
+          <meshBasicMaterial color="#00e5ff" transparent opacity={0.06} />
         </mesh>
       )}
     </group>
@@ -234,28 +231,28 @@ function VerticalBeam({ x, z, height, active }: { x: number; z: number; height: 
 }
 
 /** Diamond-shaped marker at peak */
-function DiamondMarker({ position, active, selected }: { position: [number, number, number]; active: boolean; selected: boolean }) {
+function DiamondMarker({ position, active, selected, dimmed }: { position: [number, number, number]; active: boolean; selected: boolean; dimmed: boolean }) {
   const meshRef = useRef<THREE.Mesh>(null)
 
   useFrame((state) => {
     if (meshRef.current) {
-      meshRef.current.rotation.y = state.clock.elapsedTime * 0.5
-      if (active) {
+      meshRef.current.rotation.y = state.clock.elapsedTime * (dimmed ? 0.2 : 0.5)
+      if (active && !dimmed) {
         const scale = 1 + Math.sin(state.clock.elapsedTime * 2) * 0.15
         meshRef.current.scale.setScalar(scale)
       } else {
-        meshRef.current.scale.setScalar(1)
+        meshRef.current.scale.setScalar(dimmed ? 0.6 : 1)
       }
     }
   })
 
   return (
     <mesh ref={meshRef} position={position} rotation={[0, 0, Math.PI / 4]}>
-      <octahedronGeometry args={[active ? 0.5 : 0.35, 0]} />
+      <octahedronGeometry args={[active && !dimmed ? 0.5 : 0.35, 0]} />
       <meshBasicMaterial
-        color={selected ? '#00ffcc' : active ? '#00e5ff' : '#ffb832'}
+        color={dimmed ? '#222230' : selected ? '#00ffcc' : active ? '#00e5ff' : '#ffb832'}
         transparent
-        opacity={active ? 0.9 : 0.5}
+        opacity={dimmed ? 0.15 : active ? 0.9 : 0.5}
       />
     </mesh>
   )

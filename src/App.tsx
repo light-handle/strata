@@ -63,7 +63,7 @@ function Dashboard() {
 
         {/* Right: Session detail — always visible */}
         <div className="w-[320px] flex-shrink-0 min-h-0">
-          <SessionDetail sessions={data.sessions} projects={data.projects} />
+          <SessionDetail sessions={data.sessions} projects={data.projects} data={data} />
         </div>
       </div>
 
