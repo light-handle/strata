@@ -35,22 +35,22 @@ No cloud. No accounts. Everything runs locally on your machine.
 ## Features
 
 ### Tactical Terrain Map
-A full 3D heightfield with Gaussian-smoothed peaks, contour lines, and a military-inspired color ramp (navy &rarr; teal &rarr; green &rarr; amber &rarr; gold). Navigate like Google Maps — drag to pan, scroll to zoom, right-drag to tilt.
+A full 3D heightfield with Gaussian-smoothed peaks, marching-squares contour lines at 12 elevation levels, and a military thermal color ramp (navy &rarr; teal &rarr; green &rarr; amber &rarr; gold). Navigate like Google Maps — drag to pan, scroll to zoom, right-drag to tilt. Every peak is labeled with its project name and token count, with diamond markers and vertical scan beams. Even the smallest sessions create visible peaks.
+
+### Project Drill-Down
+The right panel shows all your projects as interactive tiles with mini session treemaps. Click any project to drill into it — see session count, total tokens, and message stats at a glance, then browse every session in that project as cards with token bars and prompt previews. When you drill into a project, the terrain **highlights that project's peaks** and dims everything else, so you can instantly see where a project lives on the map.
 
 ### Session Browser
-Every session across all your projects, grouped and searchable. Click any session to fly the camera to its terrain peak and see full details — prompts, token breakdown, tool usage, and a one-click resume button.
+Every session across all your projects, grouped and searchable. Click any session to fly the camera to its terrain peak and see full details — prompts, token breakdown by type (input/output/cache read/cache write), tool usage with bar charts, and the last exchange.
 
 ### Live Updates
-File watcher monitors `~/.claude/projects/` in real-time via WebSocket. Start a Claude Code session in another terminal and watch the terrain grow.
+File watcher monitors `~/.claude/projects/` in real-time via WebSocket. Start a Claude Code session in another terminal and watch the terrain grow as tokens flow.
 
 ### Activity Timeline
-Stacked area chart showing token usage over time, broken down by project. See your usage patterns at a glance.
-
-### Project Breakdown
-Horizontal bar chart ranking all projects by total token consumption.
+D3-powered stacked area chart showing token usage over time, broken down by project. Hover crosshair reveals daily details. Paired with a horizontal bar chart ranking projects by total token consumption.
 
 ### Command Palette
-`Cmd+K` to search across sessions, projects, and actions. Find anything instantly.
+`Cmd+K` to fuzzy search across sessions, projects, and actions. Navigate the entire dashboard from your keyboard.
 
 ### Resume Sessions
 Click "Resume" on any session to launch `claude --resume <id>` in a new Terminal window and pick up where you left off.
@@ -93,9 +93,35 @@ Claude Code stores every session as a `.jsonl` file — one JSON object per line
 
 1. **Scans** all project directories and parses every session file
 2. **Extracts** token counts, prompts, tool usage, timestamps, models
-3. **Maps** sessions onto a 2D grid (time x project) with Gaussian smoothing
-4. **Renders** a 3D heightfield terrain with contour lines
+3. **Maps** sessions onto a 2D grid (time &times; project) with Gaussian smoothing
+4. **Renders** a 3D heightfield terrain with contour lines and vertex colors
 5. **Watches** for file changes and pushes live updates via WebSocket
+
+---
+
+## Navigation
+
+### Three-Level Drill-Down
+
+The right panel supports three levels of navigation:
+
+| Level | View | What you see |
+|-------|------|-------------|
+| 1 | **Projects Overview** | Tile grid of all projects with mini session treemaps + scrollable project list |
+| 2 | **Project Detail** | Stats (sessions, tokens, messages) + all sessions as cards with token bars. Terrain dims non-project peaks. |
+| 3 | **Session Detail** | Full session info: prompts, token breakdown, tool usage, resume button. Camera flies to peak. |
+
+Click a project tile to drill in. Click a session card to see details and fly to its terrain peak. Use back buttons to navigate up.
+
+### Terrain Interaction
+
+| Action | Effect |
+|--------|--------|
+| Left-drag | Pan across the terrain |
+| Scroll | Zoom in/out |
+| Right-drag | Tilt/rotate the view |
+| Click a peak marker | Select session, fly camera there |
+| Select a project | Highlights project's peaks, dims all others |
 
 ---
 
@@ -117,15 +143,12 @@ Claude Code stores every session as a `.jsonl` file — one JSON object per line
 
 | Key | Action |
 |-----|--------|
+| `Cmd+K` | Command palette (search sessions, projects, actions) |
 | `[` | Toggle sessions panel |
 | `]` | Toggle detail panel |
 | `` ` `` | Toggle analytics tray |
-| `Cmd+K` | Command palette |
 | `Esc` | Close active panel |
 | `Shift+Space` | Reset camera to overview |
-| Left drag | Pan terrain |
-| Scroll | Zoom in/out |
-| Right drag | Tilt/rotate view |
 
 ---
 
@@ -139,16 +162,16 @@ strata/
   shared/
     types.ts          Shared TypeScript types
   src/
-    App.tsx           Main layout
+    App.tsx           Main 3-column layout
+    context/          App state (panel visibility, selection, camera target)
     components/
-      terrain/        3D terrain (mesh, camera, markers)
-      panels/         Session list, detail, analytics
+      terrain/        3D terrain (mesh, contours, camera, markers, labels)
+      panels/         Session list, project drill-down, session detail, analytics
       charts/         D3 activity timeline, project bars
-      CommandPalette  Cmd+K search
-      HUDBar          Top status bar
-    context/          App state management
-    hooks/            WebSocket, keyboard
-    lib/              Terrain math, formatters
+      CommandPalette  Cmd+K fuzzy search
+      HUDBar          Top status bar with live clock
+    hooks/            WebSocket, keyboard shortcuts
+    lib/              Terrain math (Gaussian smoothing, marching squares), formatters
 ```
 
 ---

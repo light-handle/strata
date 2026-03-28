@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Strata — 3D Session Dashboard for Claude Code</title>
-  <meta name="description" content="Visualize every Claude Code session as a 3D topographic terrain. Local-only, real-time, beautiful." />
+  <meta name="description" content="Visualize every Claude Code session as a 3D topographic terrain. Drill down into projects, explore peaks, resume sessions. Local-only, real-time, beautiful." />
   <link rel="icon" href="assets/strata-logo.svg" />
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <style>
@@ -31,7 +31,6 @@
       overflow-x: hidden;
     }
 
-    /* Vignette */
     body::before {
       content: '';
       position: fixed;
@@ -41,7 +40,6 @@
       z-index: 100;
     }
 
-    /* Grid background */
     body::after {
       content: '';
       position: fixed;
@@ -88,7 +86,7 @@
       font-size: 16px;
       color: var(--text);
       font-weight: 300;
-      max-width: 500px;
+      max-width: 520px;
       margin: 0 auto 40px;
       line-height: 1.7;
     }
@@ -167,13 +165,8 @@
       line-height: 1.8;
     }
 
-    .install-block code .comment {
-      color: var(--text-muted);
-    }
-
-    .install-block code .cmd {
-      color: var(--secondary);
-    }
+    .install-block code .comment { color: var(--text-muted); }
+    .install-block code .cmd { color: var(--secondary); }
 
     /* Features */
     .features {
@@ -225,6 +218,82 @@
       font-size: 11px;
       color: var(--text-muted);
       line-height: 1.7;
+    }
+
+    .feature-card code {
+      color: var(--secondary);
+      font-size: 10px;
+    }
+
+    /* Drill-down section */
+    .drilldown {
+      padding: 60px 0;
+      border-top: 1px solid var(--border);
+    }
+
+    .drilldown h2 {
+      text-align: center;
+      font-size: 11px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 40px;
+    }
+
+    .levels {
+      display: flex;
+      gap: 16px;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .level-card {
+      flex: 1;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      position: relative;
+    }
+
+    .level-card .level-num {
+      position: absolute;
+      top: -10px;
+      left: 16px;
+      background: var(--bg);
+      border: 1px solid var(--primary);
+      color: var(--primary);
+      width: 22px;
+      height: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      font-size: 10px;
+      font-weight: 600;
+    }
+
+    .level-card h4 {
+      font-size: 12px;
+      color: var(--text-bright);
+      font-weight: 500;
+      margin-bottom: 8px;
+      margin-top: 4px;
+    }
+
+    .level-card p {
+      font-size: 10px;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    .level-arrow {
+      display: flex;
+      align-items: center;
+      color: var(--primary);
+      font-size: 18px;
+      flex-shrink: 0;
+      opacity: 0.4;
     }
 
     /* How it works */
@@ -319,6 +388,59 @@
       color: var(--text-muted);
     }
 
+    /* Shortcuts */
+    .shortcuts {
+      padding: 60px 0;
+      border-top: 1px solid var(--border);
+    }
+
+    .shortcuts h2 {
+      text-align: center;
+      font-size: 11px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 32px;
+    }
+
+    .shortcut-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+      max-width: 700px;
+      margin: 0 auto;
+    }
+
+    .shortcut-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+    }
+
+    .shortcut-item kbd {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 28px;
+      padding: 2px 8px;
+      font-size: 10px;
+      font-family: inherit;
+      border: 1px solid rgba(255,180,50,0.2);
+      border-radius: 4px;
+      color: var(--primary);
+      background: rgba(255,180,50,0.05);
+      flex-shrink: 0;
+    }
+
+    .shortcut-item span {
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+
     /* Footer */
     .footer {
       text-align: center;
@@ -336,15 +458,14 @@
       color: var(--primary);
       text-decoration: none;
     }
-    .footer a:hover {
-      text-decoration: underline;
-    }
+    .footer a:hover { text-decoration: underline; }
 
-    /* Responsive */
-    @media (max-width: 600px) {
+    @media (max-width: 700px) {
       .hero h1 { font-size: 32px; }
       .hero { padding: 60px 0 40px; }
       .feature-grid { grid-template-columns: 1fr; }
+      .levels { flex-direction: column; }
+      .level-arrow { transform: rotate(90deg); justify-content: center; }
     }
   </style>
 </head>
@@ -357,8 +478,8 @@
       <h1>Strata</h1>
       <p class="tagline">
         Visualize every <strong>Claude Code</strong> session as a
-        <strong>3D topographic terrain</strong>. Explore peaks of token usage,
-        browse session history, and resume past conversations &mdash;
+        <strong>3D topographic terrain</strong>. Drill down into projects,
+        explore peaks of token usage, and resume past conversations &mdash;
         all from your browser, running entirely on your machine.
       </p>
       <div class="cta-group">
@@ -390,23 +511,23 @@
       <div class="feature-grid">
         <div class="feature-card">
           <div class="icon">&#9650;</div>
-          <h3>3D Terrain Map</h3>
-          <p>Sessions rendered as Gaussian-smoothed peaks on a heightfield. Contour lines, tactical grid, and a thermal color ramp from navy through teal and amber to gold.</p>
+          <h3>Tactical Terrain Map</h3>
+          <p>Gaussian-smoothed heightfield with 12-level contour lines via marching squares. Military thermal color ramp from navy through teal and amber to gold. Every peak labeled with project name and token count.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">&#9871;</div>
+          <h3>Project Drill-Down</h3>
+          <p>Three-level navigation: projects overview with treemap tiles &rarr; project detail with session cards and token bars &rarr; full session info. Selecting a project <strong>highlights its peaks</strong> on the terrain and dims everything else.</p>
         </div>
         <div class="feature-card">
           <div class="icon">&#9776;</div>
           <h3>Session Browser</h3>
-          <p>Search and filter all sessions across every project. See first prompts, token counts, models, and duration at a glance. Click to fly to the terrain peak.</p>
+          <p>Searchable list of all sessions grouped by project. Click any session to fly the camera to its terrain peak. See prompts, token breakdown, tool usage, and duration.</p>
         </div>
         <div class="feature-card">
           <div class="icon">&#9889;</div>
           <h3>Live Updates</h3>
-          <p>WebSocket connection watches your Claude files in real-time. Start a session in another terminal and watch the terrain grow as tokens flow.</p>
-        </div>
-        <div class="feature-card">
-          <div class="icon">&#9776;</div>
-          <h3>Activity Timeline</h3>
-          <p>D3-powered stacked area chart showing token usage over time, broken down by project. Hover crosshair reveals daily details.</p>
+          <p>WebSocket + chokidar watches your Claude files in real-time. Start a session in another terminal and watch the terrain grow as tokens flow.</p>
         </div>
         <div class="feature-card">
           <div class="icon">&#9654;</div>
@@ -416,7 +537,33 @@
         <div class="feature-card">
           <div class="icon">&#8984;K</div>
           <h3>Command Palette</h3>
-          <p>Fuzzy search across sessions, projects, and actions. Navigate the entire dashboard from your keyboard.</p>
+          <p>Fuzzy search across sessions, projects, and actions. Navigate the entire dashboard from your keyboard without touching the mouse.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Drill-Down -->
+  <section class="drilldown">
+    <div class="container">
+      <h2>Three-Level Drill-Down</h2>
+      <div class="levels">
+        <div class="level-card">
+          <div class="level-num">1</div>
+          <h4>Projects Overview</h4>
+          <p>Tile grid with mini session treemaps. Each tile shows relative token usage. Scrollable project list with activity indicators below.</p>
+        </div>
+        <div class="level-arrow">&rarr;</div>
+        <div class="level-card">
+          <div class="level-num">2</div>
+          <h4>Project Detail</h4>
+          <p>Stats dashboard (sessions, tokens, messages). All sessions listed as cards with token bars and prompt previews. Terrain highlights this project's peaks.</p>
+        </div>
+        <div class="level-arrow">&rarr;</div>
+        <div class="level-card">
+          <div class="level-num">3</div>
+          <h4>Session Detail</h4>
+          <p>Full session breakdown: first/last prompts, token grid (input/output/cache), tool usage bars, message counts, and a resume button. Camera flies to the peak.</p>
         </div>
       </div>
     </div>
@@ -438,22 +585,55 @@
           <div class="step-num">2</div>
           <div class="step-content">
             <h4>Extracts session metadata</h4>
-            <p>Parses every message to extract token usage, tool calls, models, timestamps, prompts, and response summaries.</p>
+            <p>Parses every message to extract token usage (input, output, cache read, cache create), tool calls, models, timestamps, prompts, and response summaries.</p>
           </div>
         </div>
         <div class="step">
           <div class="step-num">3</div>
           <div class="step-content">
             <h4>Builds the terrain</h4>
-            <p>Maps sessions onto a 2D grid (time &times; project) and applies Gaussian smoothing to generate organic terrain peaks from token volumes.</p>
+            <p>Maps sessions onto a 2D grid (time &times; project), applies Gaussian smoothing, generates contour lines via marching squares, and assigns vertex colors from a thermal ramp.</p>
           </div>
         </div>
         <div class="step">
           <div class="step-num">4</div>
           <div class="step-content">
             <h4>Renders in your browser</h4>
-            <p>Three.js renders the heightfield with contour lines and vertex colors. React powers the panels. D3 draws the charts. All connected via WebSocket for live updates.</p>
+            <p>Three.js renders the heightfield with contour lines, diamond markers, and scan beams. React powers the panels. D3 draws the charts. All connected via WebSocket for live updates.</p>
           </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Shortcuts -->
+  <section class="shortcuts">
+    <div class="container">
+      <h2>Keyboard Shortcuts</h2>
+      <div class="shortcut-grid">
+        <div class="shortcut-item">
+          <kbd>&#8984;K</kbd>
+          <span>Command palette</span>
+        </div>
+        <div class="shortcut-item">
+          <kbd>[</kbd>
+          <span>Toggle sessions</span>
+        </div>
+        <div class="shortcut-item">
+          <kbd>]</kbd>
+          <span>Toggle detail</span>
+        </div>
+        <div class="shortcut-item">
+          <kbd>`</kbd>
+          <span>Toggle analytics</span>
+        </div>
+        <div class="shortcut-item">
+          <kbd>Esc</kbd>
+          <span>Close panel</span>
+        </div>
+        <div class="shortcut-item">
+          <kbd>&#8679;Space</kbd>
+          <span>Reset camera</span>
         </div>
       </div>
     </div>
