@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Strata — 3D Session Dashboard for Claude Code</title>
+  <meta name="description" content="Visualize every Claude Code session as a 3D topographic terrain. Local-only, real-time, beautiful." />
+  <link rel="icon" href="assets/strata-logo.svg" />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #08080c;
+      --surface: #0c0e16;
+      --primary: #ffb832;
+      --primary-dim: #cc8800;
+      --secondary: #00e5ff;
+      --text: #c8ccd8;
+      --text-bright: #eef0f8;
+      --text-muted: #555a6a;
+      --border: rgba(255, 180, 50, 0.12);
+      --glow: rgba(255, 184, 50, 0.15);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'JetBrains Mono', monospace;
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* Vignette */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(ellipse at center, transparent 40%, rgba(8,8,12,0.7) 100%);
+      pointer-events: none;
+      z-index: 100;
+    }
+
+    /* Grid background */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255,180,50,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,180,50,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 0 24px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Hero */
+    .hero {
+      text-align: center;
+      padding: 100px 0 80px;
+    }
+
+    .hero-logo {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 24px;
+    }
+
+    .hero h1 {
+      font-size: 48px;
+      font-weight: 700;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: var(--primary);
+      text-shadow: 0 0 30px rgba(255,184,50,0.3);
+      margin-bottom: 16px;
+    }
+
+    .hero .tagline {
+      font-size: 16px;
+      color: var(--text);
+      font-weight: 300;
+      max-width: 500px;
+      margin: 0 auto 40px;
+      line-height: 1.7;
+    }
+
+    .hero .tagline strong {
+      color: var(--text-bright);
+      font-weight: 500;
+    }
+
+    .cta-group {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 28px;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      text-decoration: none;
+      border-radius: 6px;
+      transition: all 0.2s;
+      cursor: pointer;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: var(--bg);
+      border: 1px solid var(--primary);
+    }
+    .btn-primary:hover {
+      background: var(--primary-dim);
+      box-shadow: 0 0 20px rgba(255,184,50,0.3);
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-secondary:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    /* Install block */
+    .install-block {
+      margin: 0 auto 80px;
+      max-width: 500px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px 24px;
+      text-align: left;
+    }
+
+    .install-block .label {
+      font-size: 9px;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+
+    .install-block code {
+      display: block;
+      font-size: 13px;
+      color: var(--text-bright);
+      line-height: 1.8;
+    }
+
+    .install-block code .comment {
+      color: var(--text-muted);
+    }
+
+    .install-block code .cmd {
+      color: var(--secondary);
+    }
+
+    /* Features */
+    .features {
+      padding: 60px 0;
+    }
+
+    .features h2 {
+      text-align: center;
+      font-size: 11px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 48px;
+    }
+
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+    }
+
+    .feature-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 24px;
+      transition: all 0.2s;
+    }
+
+    .feature-card:hover {
+      border-color: rgba(255,180,50,0.25);
+      box-shadow: 0 0 20px rgba(255,184,50,0.05);
+    }
+
+    .feature-card .icon {
+      font-size: 24px;
+      margin-bottom: 12px;
+    }
+
+    .feature-card h3 {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--primary);
+      letter-spacing: 0.05em;
+      margin-bottom: 8px;
+    }
+
+    .feature-card p {
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.7;
+    }
+
+    /* How it works */
+    .how-it-works {
+      padding: 60px 0;
+      border-top: 1px solid var(--border);
+    }
+
+    .how-it-works h2 {
+      text-align: center;
+      font-size: 11px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 40px;
+    }
+
+    .steps {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .step {
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+    }
+
+    .step-num {
+      flex-shrink: 0;
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      border: 1px solid var(--primary);
+      color: var(--primary);
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .step-content h4 {
+      font-size: 12px;
+      color: var(--text-bright);
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+
+    .step-content p {
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    .step-content code {
+      color: var(--secondary);
+      font-size: 10px;
+    }
+
+    /* Tech */
+    .tech {
+      padding: 60px 0;
+      border-top: 1px solid var(--border);
+    }
+
+    .tech h2 {
+      text-align: center;
+      font-size: 11px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 32px;
+    }
+
+    .tech-pills {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .tech-pill {
+      padding: 6px 14px;
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      color: var(--text-muted);
+    }
+
+    /* Footer */
+    .footer {
+      text-align: center;
+      padding: 60px 0 40px;
+      border-top: 1px solid var(--border);
+    }
+
+    .footer p {
+      font-size: 10px;
+      color: var(--text-muted);
+      letter-spacing: 0.1em;
+    }
+
+    .footer a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+    .footer a:hover {
+      text-decoration: underline;
+    }
+
+    /* Responsive */
+    @media (max-width: 600px) {
+      .hero h1 { font-size: 32px; }
+      .hero { padding: 60px 0 40px; }
+      .feature-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="container">
+      <img src="assets/strata-logo.svg" alt="Strata" class="hero-logo" />
+      <h1>Strata</h1>
+      <p class="tagline">
+        Visualize every <strong>Claude Code</strong> session as a
+        <strong>3D topographic terrain</strong>. Explore peaks of token usage,
+        browse session history, and resume past conversations &mdash;
+        all from your browser, running entirely on your machine.
+      </p>
+      <div class="cta-group">
+        <a href="https://github.com/light-handle/strata" class="btn btn-primary">View on GitHub</a>
+        <a href="#get-started" class="btn btn-secondary">Get Started</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Install -->
+  <div class="container" id="get-started">
+    <div class="install-block">
+      <div class="label">Quick Start</div>
+      <code>
+        <span class="comment"># clone &amp; run</span><br/>
+        <span class="cmd">git clone</span> https://github.com/light-handle/strata.git<br/>
+        <span class="cmd">cd</span> strata<br/>
+        <span class="cmd">npm install</span><br/>
+        <span class="cmd">npm run dev</span><br/><br/>
+        <span class="comment"># open http://localhost:5173</span>
+      </code>
+    </div>
+  </div>
+
+  <!-- Features -->
+  <section class="features">
+    <div class="container">
+      <h2>Features</h2>
+      <div class="feature-grid">
+        <div class="feature-card">
+          <div class="icon">&#9650;</div>
+          <h3>3D Terrain Map</h3>
+          <p>Sessions rendered as Gaussian-smoothed peaks on a heightfield. Contour lines, tactical grid, and a thermal color ramp from navy through teal and amber to gold.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">&#9776;</div>
+          <h3>Session Browser</h3>
+          <p>Search and filter all sessions across every project. See first prompts, token counts, models, and duration at a glance. Click to fly to the terrain peak.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">&#9889;</div>
+          <h3>Live Updates</h3>
+          <p>WebSocket connection watches your Claude files in real-time. Start a session in another terminal and watch the terrain grow as tokens flow.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">&#9776;</div>
+          <h3>Activity Timeline</h3>
+          <p>D3-powered stacked area chart showing token usage over time, broken down by project. Hover crosshair reveals daily details.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">&#9654;</div>
+          <h3>Resume Sessions</h3>
+          <p>One click to resume any past session. Opens a terminal with <code>claude --resume</code> so you can pick up exactly where you left off.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">&#8984;K</div>
+          <h3>Command Palette</h3>
+          <p>Fuzzy search across sessions, projects, and actions. Navigate the entire dashboard from your keyboard.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- How it works -->
+  <section class="how-it-works">
+    <div class="container">
+      <h2>How It Works</h2>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-content">
+            <h4>Scans your local Claude data</h4>
+            <p>Reads all <code>.jsonl</code> session files from <code>~/.claude/projects/</code> &mdash; the directory Claude Code uses to store conversation history.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-content">
+            <h4>Extracts session metadata</h4>
+            <p>Parses every message to extract token usage, tool calls, models, timestamps, prompts, and response summaries.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-content">
+            <h4>Builds the terrain</h4>
+            <p>Maps sessions onto a 2D grid (time &times; project) and applies Gaussian smoothing to generate organic terrain peaks from token volumes.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-content">
+            <h4>Renders in your browser</h4>
+            <p>Three.js renders the heightfield with contour lines and vertex colors. React powers the panels. D3 draws the charts. All connected via WebSocket for live updates.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Tech -->
+  <section class="tech">
+    <div class="container">
+      <h2>Built With</h2>
+      <div class="tech-pills">
+        <span class="tech-pill">React 18</span>
+        <span class="tech-pill">TypeScript</span>
+        <span class="tech-pill">Three.js</span>
+        <span class="tech-pill">React Three Fiber</span>
+        <span class="tech-pill">D3.js</span>
+        <span class="tech-pill">Tailwind CSS</span>
+        <span class="tech-pill">Express</span>
+        <span class="tech-pill">WebSocket</span>
+        <span class="tech-pill">Chokidar</span>
+        <span class="tech-pill">Vite</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <p>
+        Built with <a href="https://claude.ai/claude-code">Claude Code</a>.<br/>
+        <a href="https://github.com/light-handle/strata">GitHub</a> &bull; MIT License
+      </p>
+    </div>
+  </footer>
+
+</body>
+</html>
