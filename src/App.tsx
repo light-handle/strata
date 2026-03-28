@@ -10,12 +10,22 @@ import SessionDetail from './components/panels/RightDrawer'
 import BottomTray from './components/panels/BottomTray'
 import CommandPalette from './components/CommandPalette'
 import GanttChart from './components/charts/GanttChart'
+import ConversationModal from './components/timeline/ConversationModal'
 import type { ToolExecution } from '../shared/types'
+
+function ChatModal() {
+  const { chatModalOpen, selectedSessionId } = useAppState()
+  const dispatch = useAppDispatch()
+
+  if (!chatModalOpen || !selectedSessionId) return null
+
+  return <ConversationModal sessionId={selectedSessionId} onClose={() => dispatch({ type: 'CLOSE_CHAT_MODAL' })} />
+}
 
 function GanttModal() {
   const { ganttOpen, selectedSessionId } = useAppState()
   const dispatch = useAppDispatch()
-  const { data: timelineData } = useSessionMessages(ganttOpen ? selectedSessionId : null)
+  const { data: timelineData, loading: ganttLoading } = useSessionMessages(ganttOpen ? selectedSessionId : null)
 
   const toolExecutions = useMemo((): ToolExecution[] => {
     if (!timelineData) return []
@@ -49,9 +59,34 @@ function GanttModal() {
     return executions
   }, [timelineData])
 
-  if (!ganttOpen || toolExecutions.length === 0) return null
+  if (!ganttOpen) return null
 
-  return <GanttChart executions={toolExecutions} onClose={() => dispatch({ type: 'CLOSE_GANTT' })} />
+  const handleClose = () => dispatch({ type: 'CLOSE_GANTT' })
+
+  if (ganttLoading || (!timelineData && ganttOpen)) {
+    return (
+      <div className="fixed inset-0 z-[90] cmd-backdrop flex items-center justify-center" onClick={handleClose}>
+        <div className="glass-panel rounded-lg px-8 py-6 text-center" style={{ border: '1px solid rgba(255,180,50,0.2)' }} onClick={(e) => e.stopPropagation()}>
+          <div className="text-[14px] text-text-bright mb-2">Loading tool data...</div>
+          <div className="text-[11px] text-text-muted">Parsing session messages</div>
+        </div>
+      </div>
+    )
+  }
+
+  if (toolExecutions.length === 0) {
+    return (
+      <div className="fixed inset-0 z-[90] cmd-backdrop flex items-center justify-center" onClick={handleClose}>
+        <div className="glass-panel rounded-lg px-8 py-6 text-center" style={{ border: '1px solid rgba(255,180,50,0.2)' }} onClick={(e) => e.stopPropagation()}>
+          <div className="text-[14px] text-text-bright mb-2">No tool calls found</div>
+          <div className="text-[11px] text-text-muted">This session has no tool executions to visualize.</div>
+          <button onClick={handleClose} className="mt-4 pill active">Close</button>
+        </div>
+      </div>
+    )
+  }
+
+  return <GanttChart executions={toolExecutions} onClose={handleClose} />
 }
 
 function Dashboard() {
@@ -116,6 +151,7 @@ function Dashboard() {
     {/* Modals — rendered OUTSIDE overflow-hidden container */}
     <CommandPalette sessions={data.sessions} projects={data.projects} />
     <GanttModal />
+    <ChatModal />
     </>
   )
 }

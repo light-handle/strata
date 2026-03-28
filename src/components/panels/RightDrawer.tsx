@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react'
 import type { SessionSummary, ProjectSummary, DashboardData } from '../../../shared/types'
-import ConversationTimeline from '../timeline/ConversationTimeline'
 import { useAppState, useAppDispatch } from '../../context/AppContext'
 import { mapSessionsToGrid, DEFAULT_CONFIG } from '../../lib/terrainUtils'
 import {
@@ -268,7 +267,7 @@ function ProjectDrillDown({
 function SessionDetailView({ session }: { session: SessionSummary }) {
   const dispatch = useAppDispatch()
   const { selectedProjectName } = useAppState()
-  const [tab, setTab] = useState<'summary' | 'conversation'>('summary')
+  const [tab] = useState<'summary'>('summary')
 
   const handleResume = async () => {
     try {
@@ -291,14 +290,8 @@ function SessionDetailView({ session }: { session: SessionSummary }) {
           </button>
           <div className="flex gap-1">
             <button
-              className={`pill ${tab === 'summary' ? 'active' : ''}`}
-              onClick={() => setTab('summary')}
-            >
-              Summary
-            </button>
-            <button
-              className={`pill ${tab === 'conversation' ? 'active' : ''}`}
-              onClick={() => setTab('conversation')}
+              className="pill"
+              onClick={() => dispatch({ type: 'OPEN_CHAT_MODAL' })}
             >
               Chat
             </button>
@@ -312,10 +305,8 @@ function SessionDetailView({ session }: { session: SessionSummary }) {
         </div>
       </div>
 
-      {/* Tab content */}
-      {tab === 'conversation' ? (
-        <ConversationTimeline sessionId={session.id} />
-      ) : (
+      {/* Summary content */}
+      {(
       <div className="flex-1 overflow-y-auto">
       {/* Header */}
       <div className="px-4 py-3 border-b border-border">

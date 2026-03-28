@@ -11,7 +11,7 @@ interface Props {
 }
 
 export default function SessionList({ sessions, data }: Props) {
-  const { selectedSessionId } = useAppState()
+  const { selectedSessionId, selectedProjectName } = useAppState()
   const dispatch = useAppDispatch()
   const [filter, setFilter] = useState('')
 
@@ -27,6 +27,8 @@ export default function SessionList({ sessions, data }: Props) {
   }, [data])
 
   const filtered = sessions.filter((s) => {
+    // Auto-filter when a project is selected in the right panel
+    if (selectedProjectName && s.projectName !== selectedProjectName) return false
     if (!filter) return true
     const q = filter.toLowerCase()
     return (
@@ -46,9 +48,24 @@ export default function SessionList({ sessions, data }: Props) {
   return (
     <div className="glass-panel h-full flex flex-col">
       <div className="glass-panel-header">
-        <span>Sessions</span>
+        <span>{selectedProjectName ? selectedProjectName : 'Sessions'}</span>
         <span className="count">{filtered.length}</span>
       </div>
+
+      {/* Active project filter indicator */}
+      {selectedProjectName && (
+        <div className="px-3 py-1.5 border-b border-border flex items-center justify-between">
+          <span className="text-[9px] text-primary tracking-wider">
+            Filtered to {selectedProjectName}
+          </span>
+          <button
+            onClick={() => dispatch({ type: 'DESELECT_PROJECT' })}
+            className="text-[8px] text-text-muted hover:text-text transition-colors"
+          >
+            clear
+          </button>
+        </div>
+      )}
 
       {/* Search */}
       <div className="px-3 py-2 border-b border-border">

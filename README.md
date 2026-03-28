@@ -41,9 +41,13 @@ A full 3D heightfield with Gaussian-smoothed peaks, marching-squares contour lin
 The right panel shows all your projects as interactive tiles with mini session treemaps. Click any project to drill into it — see session count, total tokens, and message stats at a glance, then browse every session in that project as cards with token bars and prompt previews. When you drill into a project, the terrain **highlights that project's peaks** and dims everything else, so you can instantly see where a project lives on the map.
 
 ### Conversation Timeline
-Switch to the "Conversation" tab on any session to replay the full exchange. Every user prompt, Claude response, thinking block, tool call, tool result, and subagent invocation is rendered in a scrollable timeline. Thinking blocks are collapsed by default with a brain icon — click to expand Claude's internal reasoning. Tool calls show smart previews (the command for Bash, the file path for Read/Write, the pattern for Grep) and expand to full JSON input. Tool results are collapsible with error highlighting. Time gap indicators mark pauses longer than 60 seconds. Chunked rendering handles sessions with hundreds of turns.
+Click "Chat" on any session to open a full-width modal replaying the entire conversation. User prompts, Claude responses, thinking blocks, tool calls, tool results, and subagent invocations — all rendered with proper formatting. Thinking blocks and tool outputs are collapsible. Time gap indicators mark pauses. Chunked rendering handles sessions with hundreds of turns.
+
+### Tool Execution Gantt Chart
+Click "Tools" to open a wide-screen Gantt chart showing every tool call as a horizontal bar on a time axis. Color-coded by tool type, with parallel tools on separate rows. Hover for duration and input preview, click for full tool input JSON. Shows total execution time and max parallelism.
 
 ### Session Browser
+All sessions grouped by project, searchable. Automatically filters when you drill into a project from the right panel — shows a "Filtered to {project}" indicator with a clear button.
 Every session across all your projects, grouped and searchable. Click any session to fly the camera to its terrain peak and see full details — prompts, token breakdown by type (input/output/cache read/cache write), tool usage with bar charts, and the last exchange.
 
 ### Live Updates
@@ -192,14 +196,8 @@ strata/
 
 ## Roadmap
 
-### Conversation Timeline (shipped)
-Full conversation replay within the session detail panel. Switch between Summary and Conversation tabs to browse every prompt, response, thinking block, tool call, and subagent invocation. Thinking blocks are collapsible. Tool calls show compact previews with expandable full input/output. Time gap indicators mark pauses in the conversation.
-
 ### Subagent Tree (planned)
-Expandable nested timelines for subagent conversations. When a session spawns subagents, visualize them as a branching tree off the parent timeline. Each subagent's full conversation is loadable on demand. The mcpspec project, for example, has sessions with 26 parallel subagents doing web research — this would render as a striking parallel execution tree.
-
-### Tool Execution Gantt Chart (planned)
-D3 Gantt-chart style visualization showing tool calls over time. X-axis = time, each horizontal bar = one tool execution. Color-coded by tool type (Bash = orange, Read = teal, Write = blue, etc.). Reveals patterns like bursts of parallel tool calls, long-running Bash commands, and rapid file read sequences. Unique to Strata — no other Claude Code tool offers this view.
+Expandable nested timelines for subagent conversations. Visualize parallel subagent execution as a branching tree off the parent timeline.
 
 ### Session Replay (planned)
 A "play" button that steps through the conversation chronologically, revealing each message/tool call/thinking block one at a time with the original timing. Like watching a recording of the coding session unfold in real-time.
