@@ -52,15 +52,17 @@ app.post('/api/sessions/:id/resume', (req, res) => {
   if (!session) return res.status(404).json({ error: 'Session not found' })
 
   const cmd = `claude --resume ${session.id}`
-  const cwd = session.projectPath.includes('projects/')
-    ? session.projectPath
-    : os.homedir()
+
+  // Decode project path: "-Users-Kunal-Documents-workspace-foo" → "/Users/Kunal/Documents/workspace/foo"
+  const encoded = path.basename(session.projectPath)
+  const cwd = '/' + encoded.split('-').filter(Boolean).join('/')
 
   try {
     // macOS: open new Terminal window with the command
-    const script = `tell application "Terminal" to do script "cd ${cwd.replace(/'/g, "\\'")} && ${cmd}"`
+    const escapedCwd = cwd.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
+    const script = `tell application "Terminal" to do script "cd \\"${escapedCwd}\\" && ${cmd}"`
     execSync(`osascript -e '${script}'`)
-    res.json({ success: true, command: cmd })
+    res.json({ success: true, command: cmd, cwd })
   } catch (err: any) {
     res.status(500).json({ error: err.message })
   }
