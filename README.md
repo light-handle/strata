@@ -41,7 +41,10 @@ A full 3D heightfield with Gaussian-smoothed peaks, marching-squares contour lin
 The right panel shows all your projects as interactive tiles with mini session treemaps. Click any project to drill into it — see session count, total tokens, and message stats at a glance, then browse every session in that project as cards with token bars and prompt previews. When you drill into a project, the terrain **highlights that project's peaks** and dims everything else, so you can instantly see where a project lives on the map.
 
 ### Conversation Timeline
-Click "Chat" on any session to open a full-width modal replaying the entire conversation. User prompts, Claude responses, thinking blocks, tool calls, tool results, and subagent invocations — all rendered with proper formatting. Thinking blocks and tool outputs are collapsible. Time gap indicators mark pauses. Chunked rendering handles sessions with hundreds of turns.
+Click "Chat" on any session to open a full-width modal with the entire conversation. User prompts, Claude responses, thinking blocks, tool calls, tool results, and subagent invocations — all rendered with proper formatting. Collapsible sections, time gap indicators, and chunked rendering for large sessions.
+
+### Session Replay
+Hit "Replay" inside the Chat modal to watch the conversation unfold in real-time. Blocks appear one at a time using actual timestamp gaps. Text blocks (prompts, responses, thinking) get a character-by-character typing animation with a blinking cursor. Play/pause, scrubber, speed controls (1x/2x/4x/8x), and skip. Click any typing block to complete it instantly. Long gaps auto-compress to 5 seconds.
 
 ### Tool Execution Gantt Chart
 Click "Tools" to open a wide-screen Gantt chart showing every tool call as a horizontal bar on a time axis. Color-coded by tool type, with parallel tools on separate rows. Hover for duration and input preview, click for full tool input JSON. Shows total execution time and max parallelism.
@@ -194,13 +197,6 @@ strata/
 | Server port | `3141` | Express + WebSocket |
 | Client port | `5173` | Vite dev server |
 | Claude dir | `~/.claude/projects/` | Auto-detected |
-
----
-
-## Roadmap
-
-### Session Replay (planned)
-A "play" button that steps through the conversation chronologically, revealing each message/tool call/thinking block one at a time with the original timing. Like watching a recording of the coding session unfold in real-time.
 
 ---
 
