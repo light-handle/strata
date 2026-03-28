@@ -11,6 +11,7 @@ import BottomTray from './components/panels/BottomTray'
 import CommandPalette from './components/CommandPalette'
 import GanttChart from './components/charts/GanttChart'
 import ConversationModal from './components/timeline/ConversationModal'
+import SubagentTreeModal from './components/timeline/SubagentTreeModal'
 import type { ToolExecution } from '../shared/types'
 
 function ChatModal() {
@@ -20,6 +21,15 @@ function ChatModal() {
   if (!chatModalOpen || !selectedSessionId) return null
 
   return <ConversationModal sessionId={selectedSessionId} onClose={() => dispatch({ type: 'CLOSE_CHAT_MODAL' })} />
+}
+
+function SubagentModal() {
+  const { subagentTreeOpen, selectedSessionId } = useAppState()
+  const dispatch = useAppDispatch()
+
+  if (!subagentTreeOpen || !selectedSessionId) return null
+
+  return <SubagentTreeModal sessionId={selectedSessionId} onClose={() => dispatch({ type: 'CLOSE_SUBAGENT_TREE' })} />
 }
 
 function GanttModal() {
@@ -152,6 +162,7 @@ function Dashboard() {
     <CommandPalette sessions={data.sessions} projects={data.projects} />
     <GanttModal />
     <ChatModal />
+    <SubagentModal />
     </>
   )
 }

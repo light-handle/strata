@@ -18,11 +18,13 @@ export function useKeyboard() {
         return
       }
 
-      // Escape — close active panel
+      // Escape — close modals first, then panels
       if (e.key === 'Escape') {
-        if (state.commandPaletteOpen) {
-          dispatch({ type: 'TOGGLE_COMMAND_PALETTE' })
-        } else if (state.rightDrawerOpen) {
+        // Modals handle their own Escape — don't double-fire
+        if (state.chatModalOpen || state.ganttOpen || state.subagentTreeOpen || state.commandPaletteOpen) {
+          return
+        }
+        if (state.selectedSessionId) {
           dispatch({ type: 'DESELECT_SESSION' })
         } else if (state.leftDrawerOpen) {
           dispatch({ type: 'TOGGLE_LEFT_DRAWER' })

@@ -68,56 +68,37 @@ app.post('/api/sessions/:id/resume', (req, res) => {
 
 // ── Session messages (full conversation timeline) ──
 
-app.get('/api/sessions/:id/messages', (req, res) => {
-  const session = dashboardData.sessions.find((s) => s.id === req.params.id)
-  if (!session) return res.status(404).json({ error: 'Session not found' })
+// ── Shared: build timeline blocks from raw messages ──
 
-  const filePath = path.join(session.projectPath, session.id + '.jsonl')
-  const raw = parseJSONLFile(filePath)
+function extractText(content: unknown): string {
+  if (typeof content === 'string') return content
+  if (Array.isArray(content)) {
+    return content.filter((c: any) => c.type === 'text').map((c: any) => c.text).join('\n')
+  }
+  return ''
+}
 
+function buildTimelineBlocks(raw: import('../shared/types.js').RawMessage[]): TimelineBlock[] {
   const blocks: TimelineBlock[] = []
   const RESULT_MAX = 2000
-
-  function truncate(s: string, max: number): string {
-    return s.length > max ? s.slice(0, max) + '\n... (truncated)' : s
-  }
-
-  function extractText(content: unknown): string {
-    if (typeof content === 'string') return content
-    if (Array.isArray(content)) {
-      return content
-        .filter((c: any) => c.type === 'text')
-        .map((c: any) => c.text)
-        .join('\n')
-    }
-    return ''
-  }
+  const truncate = (s: string, max: number) =>
+    s.length > max ? s.slice(0, max) + '\n... (truncated)' : s
 
   for (const msg of raw) {
     const ts = msg.timestamp || ''
     const id = msg.uuid || ''
 
-    // Skip non-conversation types
     if (['file-history-snapshot', 'queue-operation', 'progress'].includes(msg.type)) continue
 
-    // System messages
     if (msg.type === 'system') {
-      blocks.push({
-        id,
-        timestamp: ts,
-        type: 'system',
-        systemSubtype: msg.subtype || '',
-        text: typeof msg.content === 'string' ? msg.content.slice(0, 500) : '',
-      })
+      blocks.push({ id, timestamp: ts, type: 'system', systemSubtype: msg.subtype || '', text: typeof msg.content === 'string' ? msg.content.slice(0, 500) : '' })
       continue
     }
 
-    // User messages
     if (msg.type === 'user') {
       const apiMsg = msg.message
       if (apiMsg?.content) {
         if (Array.isArray(apiMsg.content)) {
-          // May have text blocks and tool_result blocks
           const textParts: string[] = []
           for (const block of apiMsg.content) {
             if ((block as any).type === 'text') {
@@ -125,132 +106,94 @@ app.get('/api/sessions/:id/messages', (req, res) => {
             } else if ((block as any).type === 'tool_result') {
               const rc = (block as any).content
               let resultText = ''
-              if (typeof rc === 'string') {
-                resultText = rc
-              } else if (Array.isArray(rc)) {
-                resultText = rc.filter((c: any) => c.type === 'text').map((c: any) => c.text).join('\n')
-              }
-              blocks.push({
-                id: id + '-tr-' + (block as any).tool_use_id,
-                timestamp: ts,
-                type: 'tool-result',
-                toolResultForId: (block as any).tool_use_id || '',
-                toolResultContent: truncate(resultText, RESULT_MAX),
-                toolResultIsError: (block as any).is_error === true,
-              })
+              if (typeof rc === 'string') resultText = rc
+              else if (Array.isArray(rc)) resultText = rc.filter((c: any) => c.type === 'text').map((c: any) => c.text).join('\n')
+              blocks.push({ id: id + '-tr-' + (block as any).tool_use_id, timestamp: ts, type: 'tool-result', toolResultForId: (block as any).tool_use_id || '', toolResultContent: truncate(resultText, RESULT_MAX), toolResultIsError: (block as any).is_error === true })
             }
           }
-          if (textParts.length > 0) {
-            blocks.push({
-              id,
-              timestamp: ts,
-              type: 'user-prompt',
-              text: textParts.join('\n'),
-            })
-          }
+          if (textParts.length > 0) blocks.push({ id, timestamp: ts, type: 'user-prompt', text: textParts.join('\n') })
         } else if (typeof apiMsg.content === 'string') {
-          blocks.push({
-            id,
-            timestamp: ts,
-            type: 'user-prompt',
-            text: apiMsg.content,
-          })
+          blocks.push({ id, timestamp: ts, type: 'user-prompt', text: apiMsg.content })
         }
       } else if (typeof msg.content === 'string') {
-        // Some user messages store content at top level
-        blocks.push({
-          id,
-          timestamp: ts,
-          type: 'user-prompt',
-          text: msg.content,
-        })
+        blocks.push({ id, timestamp: ts, type: 'user-prompt', text: msg.content })
       }
       continue
     }
 
-    // Assistant messages
     if (msg.type === 'assistant') {
       const apiMsg = msg.message
       if (apiMsg?.content && Array.isArray(apiMsg.content)) {
         for (const block of apiMsg.content) {
           const bType = (block as any).type
-          if (bType === 'thinking') {
-            blocks.push({
-              id: id + '-think',
-              timestamp: ts,
-              type: 'thinking',
-              thinkingText: (block as any).thinking || '',
-            })
-          } else if (bType === 'text') {
-            blocks.push({
-              id: id + '-text',
-              timestamp: ts,
-              type: 'text',
-              text: (block as any).text || '',
-            })
-          } else if (bType === 'tool_use') {
-            blocks.push({
-              id: id + '-tool-' + ((block as any).id || ''),
-              timestamp: ts,
-              type: 'tool-use',
-              toolName: (block as any).name || 'unknown',
-              toolInput: (block as any).input || {},
-              toolUseId: (block as any).id || '',
-            })
-          }
+          if (bType === 'thinking') blocks.push({ id: id + '-think', timestamp: ts, type: 'thinking', thinkingText: (block as any).thinking || '' })
+          else if (bType === 'text') blocks.push({ id: id + '-text', timestamp: ts, type: 'text', text: (block as any).text || '' })
+          else if (bType === 'tool_use') blocks.push({ id: id + '-tool-' + ((block as any).id || ''), timestamp: ts, type: 'tool-use', toolName: (block as any).name || 'unknown', toolInput: (block as any).input || {}, toolUseId: (block as any).id || '' })
         }
       }
       continue
     }
   }
 
-  // Scan subagents
+  return blocks
+}
+
+function scanSubagents(projectPath: string, sessionId: string): { subagents: SubagentInfo[]; blocks: TimelineBlock[] } {
   const subagents: SubagentInfo[] = []
-  const subagentDir = path.join(session.projectPath, session.id, 'subagents')
+  const blocks: TimelineBlock[] = []
+  const subagentDir = path.join(projectPath, sessionId, 'subagents')
   try {
     const files = fs.readdirSync(subagentDir)
     for (const file of files) {
-      if (file.endsWith('.jsonl')) {
-        const agentId = file.replace('.jsonl', '')
-        const metaPath = path.join(subagentDir, agentId + '.meta.json')
-        let agentType = 'general-purpose'
-        try {
-          const meta = JSON.parse(fs.readFileSync(metaPath, 'utf-8'))
-          agentType = meta.agentType || agentType
-        } catch {}
-        const agentMessages = parseJSONLFile(path.join(subagentDir, file))
-        const messageCount = agentMessages.length
-
-        subagents.push({ agentId, agentType, messageCount })
-
-        // Also inject a subagent block into the timeline at the right position
-        const firstMsg = agentMessages[0]
-        if (firstMsg) {
-          const prompt = extractText(firstMsg.message?.content || firstMsg.content || '')
-          blocks.push({
-            id: 'subagent-' + agentId,
-            timestamp: firstMsg.timestamp || '',
-            type: 'subagent',
-            subagentId: agentId,
-            subagentType: agentType,
-            subagentPrompt: prompt.slice(0, 300),
-          })
-        }
+      if (!file.endsWith('.jsonl')) continue
+      const agentId = file.replace('.jsonl', '')
+      const metaPath = path.join(subagentDir, agentId + '.meta.json')
+      let agentType = 'general-purpose'
+      try {
+        const meta = JSON.parse(fs.readFileSync(metaPath, 'utf-8'))
+        agentType = meta.agentType || agentType
+      } catch {}
+      const agentMessages = parseJSONLFile(path.join(subagentDir, file))
+      subagents.push({ agentId, agentType, messageCount: agentMessages.length })
+      const firstMsg = agentMessages[0]
+      if (firstMsg) {
+        const prompt = extractText(firstMsg.message?.content || firstMsg.content || '')
+        blocks.push({ id: 'subagent-' + agentId, timestamp: firstMsg.timestamp || '', type: 'subagent', subagentId: agentId, subagentType: agentType, subagentPrompt: prompt.slice(0, 300) })
       }
     }
   } catch {}
+  return { subagents, blocks }
+}
 
-  // Sort all blocks chronologically
+// ── Session messages endpoint ──
+
+app.get('/api/sessions/:id/messages', (req, res) => {
+  const session = dashboardData.sessions.find((s) => s.id === req.params.id)
+  if (!session) return res.status(404).json({ error: 'Session not found' })
+
+  const raw = parseJSONLFile(path.join(session.projectPath, session.id + '.jsonl'))
+  const blocks = buildTimelineBlocks(raw)
+  const { subagents, blocks: subagentBlocks } = scanSubagents(session.projectPath, session.id)
+  blocks.push(...subagentBlocks)
   blocks.sort((a, b) => a.timestamp.localeCompare(b.timestamp))
 
-  const response: TimelineResponse = {
-    sessionId: session.id,
-    blocks,
-    subagents,
-    totalRawMessages: raw.length,
-  }
+  res.json({ sessionId: session.id, blocks, subagents, totalRawMessages: raw.length } as TimelineResponse)
+})
 
-  res.json(response)
+// ── Subagent messages endpoint ──
+
+app.get('/api/sessions/:sessionId/subagents/:agentId/messages', (req, res) => {
+  const session = dashboardData.sessions.find((s) => s.id === req.params.sessionId)
+  if (!session) return res.status(404).json({ error: 'Session not found' })
+
+  const filePath = path.join(session.projectPath, session.id, 'subagents', req.params.agentId + '.jsonl')
+  if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'Subagent not found' })
+
+  const raw = parseJSONLFile(filePath)
+  const blocks = buildTimelineBlocks(raw)
+  blocks.sort((a, b) => a.timestamp.localeCompare(b.timestamp))
+
+  res.json({ sessionId: req.params.sessionId, blocks, subagents: [], totalRawMessages: raw.length } as TimelineResponse)
 })
 
 // ── WebSocket ──

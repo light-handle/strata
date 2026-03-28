@@ -301,6 +301,14 @@ function SessionDetailView({ session }: { session: SessionSummary }) {
             >
               Tools
             </button>
+            {session.subagentCount > 0 && (
+              <button
+                className="pill"
+                onClick={() => dispatch({ type: 'OPEN_SUBAGENT_TREE' })}
+              >
+                Agents ({session.subagentCount})
+              </button>
+            )}
           </div>
         </div>
       </div>

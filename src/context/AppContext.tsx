@@ -9,6 +9,7 @@ interface AppState {
   selectedProjectName: string | null
   ganttOpen: boolean
   chatModalOpen: boolean
+  subagentTreeOpen: boolean
   cameraTarget: { x: number; y: number; z: number } | null
 }
 
@@ -26,6 +27,8 @@ type Action =
   | { type: 'CLOSE_GANTT' }
   | { type: 'OPEN_CHAT_MODAL' }
   | { type: 'CLOSE_CHAT_MODAL' }
+  | { type: 'OPEN_SUBAGENT_TREE' }
+  | { type: 'CLOSE_SUBAGENT_TREE' }
   | { type: 'FLY_TO'; target: { x: number; y: number; z: number } }
 
 const initialState: AppState = {
@@ -37,6 +40,7 @@ const initialState: AppState = {
   selectedProjectName: null,
   ganttOpen: false,
   chatModalOpen: false,
+  subagentTreeOpen: false,
   cameraTarget: null,
 }
 
@@ -63,6 +67,9 @@ function reducer(state: AppState, action: Action): AppState {
         ...state,
         selectedSessionId: action.id,
         rightDrawerOpen: true,
+        chatModalOpen: false,
+        ganttOpen: false,
+        subagentTreeOpen: false,
         cameraTarget: action.cameraTarget || state.cameraTarget,
       }
     case 'DESELECT_SESSION':
@@ -91,6 +98,10 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, chatModalOpen: true }
     case 'CLOSE_CHAT_MODAL':
       return { ...state, chatModalOpen: false }
+    case 'OPEN_SUBAGENT_TREE':
+      return { ...state, subagentTreeOpen: true }
+    case 'CLOSE_SUBAGENT_TREE':
+      return { ...state, subagentTreeOpen: false }
     case 'FLY_TO':
       return { ...state, cameraTarget: action.target }
     default:
