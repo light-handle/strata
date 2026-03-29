@@ -19,7 +19,7 @@
 <br/>
 
 <p align="center">
-  <img src="docs/assets/screenshot-terrain.png" alt="Strata terrain view" width="800" />
+  <img src="docs/assets/strata.gif" alt="Strata terrain view" width="800" />
 </p>
 
 ---
