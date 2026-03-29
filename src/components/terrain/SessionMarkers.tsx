@@ -138,31 +138,17 @@ export default function SessionMarkers({ data }: Props) {
               />
             )}
 
-            {/* Always-visible label — billboard facing camera */}
+            {/* Label — token count + prompt on hover */}
             <Billboard
-              position={[pos.worldX, pos.height + 2.8, pos.worldZ]}
+              position={[pos.worldX, pos.height + 2.2, pos.worldZ]}
               follow={true}
               lockX={false}
               lockY={false}
               lockZ={false}
             >
-              {/* Project name */}
+              {/* Token count */}
               <Text
-                fontSize={isActive && !isDimmed ? 1.0 : 0.7}
-                color={isDimmed ? '#333340' : isActive ? '#ffcc44' : '#ffb832'}
-                anchorX="center"
-                anchorY="bottom"
-                outlineWidth={0.04}
-                outlineColor="#08080c"
-                letterSpacing={0.05}
-              >
-                {pos.session.projectName.toUpperCase()}
-              </Text>
-
-              {/* Token count below */}
-              <Text
-                position={[0, isActive && !isDimmed ? -1.1 : -0.8, 0]}
-                fontSize={isActive && !isDimmed ? 0.7 : 0.5}
+                fontSize={isActive && !isDimmed ? 0.8 : 0.55}
                 color={isDimmed ? '#222230' : isActive ? '#00e5ff' : '#557788'}
                 anchorX="center"
                 anchorY="bottom"
@@ -173,9 +159,9 @@ export default function SessionMarkers({ data }: Props) {
               </Text>
 
               {/* First prompt preview on hover/select */}
-              {isActive && (
+              {isActive && !isDimmed && (
                 <Text
-                  position={[0, -2.0, 0]}
+                  position={[0, -1.0, 0]}
                   fontSize={0.45}
                   color="#8899aa"
                   anchorX="center"

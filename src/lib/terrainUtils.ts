@@ -24,76 +24,126 @@ export interface SessionPosition {
   tokens: number
 }
 
+export interface ProjectCenter {
+  name: string
+  worldX: number
+  worldZ: number
+  totalTokens: number
+  sessionCount: number
+}
+
 /**
- * Map sessions to 2D grid positions.
- * X = time (days), Z = project index
+ * Map sessions to 2D grid as PROJECT ISLANDS.
+ * Each project is a distinct landmass positioned in a circle.
+ * Sessions within a project cluster around their island center.
  */
 export function mapSessionsToGrid(
   data: DashboardData,
   config: TerrainConfig = DEFAULT_CONFIG,
-): { positions: SessionPosition[]; heights: Float32Array; maxHeight: number } {
+): { positions: SessionPosition[]; heights: Float32Array; maxHeight: number; projectCenters: ProjectCenter[] } {
   const { worldSize, resolution, sigma, heightScale } = config
   const gridCount = resolution + 1
   const heights = new Float32Array(gridCount * gridCount)
 
   const sessions = data.sessions
   if (sessions.length === 0) {
-    return { positions: [], heights, maxHeight: 0 }
+    return { positions: [], heights, maxHeight: 0, projectCenters: [] }
   }
 
-  const timestamps = sessions.map((s) => new Date(s.startTime).getTime())
-  const minTime = Math.min(...timestamps)
-  const maxTime = Math.max(...timestamps)
-  const timeSpan = maxTime - minTime || 1
-
+  // Group sessions by project
   const projectNames = [...new Set(sessions.map((s) => s.projectName))]
+  const projectSessions = new Map<string, SessionSummary[]>()
+  const projectTokens = new Map<string, number>()
+  for (const s of sessions) {
+    if (!projectSessions.has(s.projectName)) projectSessions.set(s.projectName, [])
+    projectSessions.get(s.projectName)!.push(s)
+    const tokens = s.totalInputTokens + s.totalOutputTokens + s.totalCacheReadTokens + s.totalCacheCreateTokens
+    projectTokens.set(s.projectName, (projectTokens.get(s.projectName) || 0) + tokens)
+  }
 
-  // Map data region to center 70% of the world — keeps peaks visible together
-  const dataRegion = worldSize * 0.7
-  const offsetX = (worldSize - dataRegion) / 2
-  const offsetZ = (worldSize - dataRegion) / 2
+  // Place projects in a circle
+  const circleRadius = worldSize * 0.28
+  const projectCenters: ProjectCenter[] = projectNames.map((name, i) => {
+    let cx: number, cz: number
 
-  const positions: SessionPosition[] = sessions.map((session) => {
-    const t = new Date(session.startTime).getTime()
-    const normalizedX = (t - minTime) / timeSpan
-    const projectIdx = projectNames.indexOf(session.projectName)
-    const normalizedZ = projectNames.length > 1
-      ? projectIdx / (projectNames.length - 1)
-      : 0.5
-
-    const worldX = offsetX + normalizedX * dataRegion - worldSize / 2
-    const worldZ = offsetZ + normalizedZ * dataRegion - worldSize / 2
-
-    const gridX = Math.round(((worldX + worldSize / 2) / worldSize) * resolution)
-    const gridZ = Math.round(((worldZ + worldSize / 2) / worldSize) * resolution)
-
-    const tokens =
-      session.totalInputTokens +
-      session.totalOutputTokens +
-      session.totalCacheReadTokens +
-      session.totalCacheCreateTokens
+    if (projectNames.length === 1) {
+      cx = 0; cz = 0
+    } else if (projectNames.length === 2) {
+      cx = (i === 0 ? -1 : 1) * circleRadius * 0.7
+      cz = 0
+    } else {
+      const angle = (i / projectNames.length) * Math.PI * 2 - Math.PI / 2
+      cx = Math.cos(angle) * circleRadius
+      cz = Math.sin(angle) * circleRadius
+    }
 
     return {
-      session,
-      gridX: Math.max(0, Math.min(resolution, gridX)),
-      gridZ: Math.max(0, Math.min(resolution, gridZ)),
-      worldX,
-      worldZ,
-      height: 0,
-      tokens,
+      name,
+      worldX: cx,
+      worldZ: cz,
+      totalTokens: projectTokens.get(name) || 0,
+      sessionCount: projectSessions.get(name)?.length || 0,
     }
   })
 
-  const maxTokens = Math.max(...positions.map((p) => p.tokens), 1)
+  // Island spread radius scales with session count (min 3, max 10 units)
+  function islandRadius(sessionCount: number): number {
+    return Math.min(10, Math.max(3, 2 + sessionCount * 1.5))
+  }
 
-  // Gaussian influence
+  // Place sessions within their project island
+  // X = time (left=earliest, right=latest), Z = slight jitter
+  const positions: SessionPosition[] = []
+
+  for (const pc of projectCenters) {
+    const pSessions = projectSessions.get(pc.name) || []
+    const sorted = [...pSessions].sort((a, b) => a.startTime.localeCompare(b.startTime))
+    const radius = islandRadius(sorted.length)
+
+    for (let i = 0; i < sorted.length; i++) {
+      const session = sorted[i]
+      let offX: number, offZ: number
+
+      if (sorted.length === 1) {
+        offX = 0; offZ = 0
+      } else {
+        // X = time position within island (left to right)
+        const t = i / (sorted.length - 1) // 0 to 1
+        offX = (t - 0.5) * radius * 1.6 // spread across island width
+        // Z = slight alternating offset so peaks don't overlap in a line
+        offZ = (i % 2 === 0 ? -1 : 1) * radius * 0.15
+      }
+
+      const worldX = pc.worldX + offX
+      const worldZ = pc.worldZ + offZ
+
+      const gridX = Math.round(((worldX + worldSize / 2) / worldSize) * resolution)
+      const gridZ = Math.round(((worldZ + worldSize / 2) / worldSize) * resolution)
+
+      const tokens =
+        session.totalInputTokens + session.totalOutputTokens +
+        session.totalCacheReadTokens + session.totalCacheCreateTokens
+
+      positions.push({
+        session,
+        gridX: Math.max(0, Math.min(resolution, gridX)),
+        gridZ: Math.max(0, Math.min(resolution, gridZ)),
+        worldX,
+        worldZ,
+        height: 0,
+        tokens,
+      })
+    }
+  }
+
+  // Gaussian heightfield
+  const maxTokens = Math.max(...positions.map((p) => p.tokens), 1)
   const sigmaGrid = (sigma / worldSize) * resolution
   const sigmaGridSq = sigmaGrid * sigmaGrid
   const influenceRadius = Math.ceil(sigmaGrid * 3)
 
   for (const pos of positions) {
     const normalizedTokens = pos.tokens / maxTokens
-    // Minimum 15% height so even tiny sessions create visible peaks
     const boosted = 0.15 + normalizedTokens * 0.85
     const amplitude = boosted * heightScale
 
@@ -122,7 +172,7 @@ export function mapSessionsToGrid(
     pos.height = heights[pos.gridZ * gridCount + pos.gridX]
   }
 
-  return { positions, heights, maxHeight }
+  return { positions, heights, maxHeight, projectCenters }
 }
 
 /**
@@ -132,17 +182,17 @@ export function heightToColor(normalizedHeight: number): [number, number, number
   const t = Math.max(0, Math.min(1, normalizedHeight))
 
   const stops = [
-    { t: 0.0,  r: 0.02, g: 0.03, b: 0.06 },   // flat terrain — near-black
-    { t: 0.02, r: 0.02, g: 0.04, b: 0.08 },   // still flat
-    { t: 0.05, r: 0.06, g: 0.15, b: 0.20 },   // first hint of elevation — visible teal
-    { t: 0.10, r: 0.08, g: 0.25, b: 0.22 },   // small peak — clear teal
-    { t: 0.20, r: 0.10, g: 0.35, b: 0.18 },   // teal-green
-    { t: 0.35, r: 0.20, g: 0.42, b: 0.10 },   // military green
-    { t: 0.50, r: 0.45, g: 0.40, b: 0.05 },   // olive
-    { t: 0.65, r: 0.70, g: 0.42, b: 0.05 },   // amber
-    { t: 0.80, r: 0.90, g: 0.55, b: 0.08 },   // hot amber
-    { t: 0.92, r: 1.0,  g: 0.70, b: 0.15 },   // bright amber
-    { t: 1.0,  r: 1.0,  g: 0.85, b: 0.50 },   // white-hot peak
+    { t: 0.0,  r: 0.02, g: 0.03, b: 0.06 },
+    { t: 0.02, r: 0.02, g: 0.04, b: 0.08 },
+    { t: 0.05, r: 0.06, g: 0.15, b: 0.20 },
+    { t: 0.10, r: 0.08, g: 0.25, b: 0.22 },
+    { t: 0.20, r: 0.10, g: 0.35, b: 0.18 },
+    { t: 0.35, r: 0.20, g: 0.42, b: 0.10 },
+    { t: 0.50, r: 0.45, g: 0.40, b: 0.05 },
+    { t: 0.65, r: 0.70, g: 0.42, b: 0.05 },
+    { t: 0.80, r: 0.90, g: 0.55, b: 0.08 },
+    { t: 0.92, r: 1.0,  g: 0.70, b: 0.15 },
+    { t: 1.0,  r: 1.0,  g: 0.85, b: 0.50 },
   ]
 
   for (let i = 0; i < stops.length - 1; i++) {
@@ -177,27 +227,22 @@ export function generateContourLines(
 
   for (let gz = 0; gz < resolution; gz++) {
     for (let gx = 0; gx < resolution; gx++) {
-      // Four corners of the cell
       const h00 = heights[gz * gridCount + gx]
       const h10 = heights[gz * gridCount + gx + 1]
       const h01 = heights[(gz + 1) * gridCount + gx]
       const h11 = heights[(gz + 1) * gridCount + gx + 1]
 
-      // Which corners are above the level?
       const b00 = h00 >= level ? 1 : 0
       const b10 = h10 >= level ? 1 : 0
       const b01 = h01 >= level ? 1 : 0
       const b11 = h11 >= level ? 1 : 0
 
       const code = b00 | (b10 << 1) | (b01 << 2) | (b11 << 3)
-      if (code === 0 || code === 15) continue // all above or all below
+      if (code === 0 || code === 15) continue
 
       const x0 = gx * cellSize - half
       const z0 = gz * cellSize - half
-      const x1 = x0 + cellSize
-      const z1 = z0 + cellSize
 
-      // Interpolation helpers
       const lerpX = (ha: number, hb: number) => {
         const t = (level - ha) / (hb - ha || 1)
         return x0 + t * cellSize
@@ -207,13 +252,11 @@ export function generateContourLines(
         return z0 + t * cellSize
       }
 
-      // Edge midpoints
       const top = () => [lerpX(h00, h10), level + 0.1, z0] as const
-      const bottom = () => [lerpX(h01, h11), level + 0.1, z1] as const
+      const bottom = () => [lerpX(h01, h11), level + 0.1, z0 + cellSize] as const
       const left = () => [x0, level + 0.1, lerpZ(h00, h01)] as const
-      const right = () => [x1, level + 0.1, lerpZ(h10, h11)] as const
+      const right = () => [x0 + cellSize, level + 0.1, lerpZ(h10, h11)] as const
 
-      // Marching squares cases (simplified)
       const addSeg = (a: readonly number[], b: readonly number[]) => {
         segments.push(a[0], a[1], a[2], b[0], b[1], b[2])
       }

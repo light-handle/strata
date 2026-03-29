@@ -51,12 +51,12 @@ export default function ConversationModal({ sessionId, onClose }: Props) {
     return () => observer.disconnect()
   }, [loadMore])
 
-  // Auto-scroll in replay mode
+  // Auto-scroll in replay mode — keep the bottom of the current block visible
   useEffect(() => {
-    if (isReplay && currentBlockRef.current) {
-      currentBlockRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' })
-    }
-  }, [isReplay, replayState.currentBlockIndex])
+    if (!isReplay || !scrollRef.current) return
+    // Scroll the container to the very bottom so new typed text is always visible
+    scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+  }, [isReplay, replayState.currentBlockIndex, replayState.typingProgress])
 
   // Browse mode: visible blocks with gaps
   const visibleBlocks = blocks.slice(0, visibleCount)
