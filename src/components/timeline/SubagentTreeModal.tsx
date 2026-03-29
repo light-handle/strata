@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useSessionMessages } from '../../hooks/useSessionMessages'
 import { useSubagentMessages } from '../../hooks/useSubagentMessages'
 import type { TimelineBlock, SubagentInfo } from '../../../shared/types'
-import { formatTime } from '../../lib/format'
+import { formatTime, formatDate } from '../../lib/format'
 
 interface Props {
   sessionId: string
@@ -108,12 +108,44 @@ function TreeView({
   // Find first user prompt for label
   const firstPrompt = parentBlocks.find((b) => b.type === 'user-prompt')?.text || '(no prompt)'
 
-  // Find subagent prompts from the blocks
+  // Find subagent prompts and timestamps from the blocks
   const subagentPrompts = new Map<string, string>()
+  const subagentTimes = new Map<string, string>()
   for (const b of parentBlocks) {
     if (b.type === 'subagent' && b.subagentId) {
       subagentPrompts.set(b.subagentId, b.subagentPrompt || '')
+      subagentTimes.set(b.subagentId, b.timestamp)
     }
+  }
+
+  // Build enriched agent list sorted by timestamp
+  const enriched = subagents.map((agent) => ({
+    ...agent,
+    prompt: subagentPrompts.get(agent.agentId) || '',
+    timestamp: subagentTimes.get(agent.agentId) || '',
+    timeMs: new Date(subagentTimes.get(agent.agentId) || 0).getTime(),
+  })).sort((a, b) => a.timeMs - b.timeMs)
+
+  // Group parallel agents — agents within 5 seconds of each other
+  const PARALLEL_THRESHOLD_MS = 5000
+  const groups: { agents: typeof enriched; isParallel: boolean }[] = []
+  let currentGroup: typeof enriched = []
+
+  for (const agent of enriched) {
+    if (currentGroup.length === 0) {
+      currentGroup.push(agent)
+    } else {
+      const lastInGroup = currentGroup[currentGroup.length - 1]
+      if (Math.abs(agent.timeMs - lastInGroup.timeMs) <= PARALLEL_THRESHOLD_MS) {
+        currentGroup.push(agent)
+      } else {
+        groups.push({ agents: currentGroup, isParallel: currentGroup.length > 1 })
+        currentGroup = [agent]
+      }
+    }
+  }
+  if (currentGroup.length > 0) {
+    groups.push({ agents: currentGroup, isParallel: currentGroup.length > 1 })
   }
 
   return (
@@ -135,42 +167,67 @@ function TreeView({
         <div className="text-[11px] text-text mt-1 line-clamp-2">{firstPrompt.slice(0, 100)}</div>
       </div>
 
-      {/* Branch line + subagent nodes */}
-      {subagents.length > 0 && (
-        <div className="ml-4 border-l-2 border-border pl-4 space-y-2">
-          {subagents.map((agent, i) => {
-            const isSelected = selected.type === 'subagent' && selected.agentId === agent.agentId
-            const prompt = subagentPrompts.get(agent.agentId) || ''
-
-            return (
-              <div
-                key={agent.agentId}
-                className="rounded-lg p-3 cursor-pointer transition-all relative"
-                style={{
-                  background: isSelected ? 'rgba(0,229,255,0.08)' : 'rgba(12,14,22,0.6)',
-                  border: `2px solid ${isSelected ? 'var(--color-secondary)' : 'rgba(255,180,50,0.06)'}`,
-                }}
-                onClick={() => onSelect({ type: 'subagent', agentId: agent.agentId })}
-              >
-                {/* Branch connector */}
-                <div
-                  className="absolute -left-[22px] top-[14px] w-[18px] h-0"
-                  style={{ borderTop: '2px solid rgba(255,180,50,0.12)' }}
-                />
-
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-[11px]">&#9881;</span>
-                  <span className="text-[11px] px-1.5 py-0.5 rounded border border-secondary/30 text-secondary font-medium">
-                    {agent.agentType}
+      {/* Branch line + subagent nodes grouped by parallel execution */}
+      {groups.length > 0 && (
+        <div className="ml-4 border-l-2 border-border pl-4 space-y-3">
+          {groups.map((group, gi) => (
+            <div key={gi}>
+              {/* Parallel group indicator */}
+              {group.isParallel && (
+                <div className="flex items-center gap-2 mb-1.5 -ml-1">
+                  <span className="text-[9px] font-semibold tracking-wider uppercase text-primary">
+                    &#9656; {group.agents.length} parallel
                   </span>
-                  <span className="text-[10px] text-text-muted ml-auto">{agent.messageCount} msgs</span>
+                  <div className="flex-1 h-px" style={{ background: 'rgba(255,180,50,0.15)' }} />
+                  <span className="text-[9px] text-text-muted">
+                    {group.agents[0].timestamp && formatDate(group.agents[0].timestamp)} {formatTime(group.agents[0].timestamp)}
+                  </span>
                 </div>
-                <div className="text-[11px] text-text mt-1 line-clamp-2">
-                  {prompt.slice(0, 120) || `Agent ${i + 1}`}
-                </div>
+              )}
+
+              <div className={group.isParallel ? 'space-y-1.5 ml-2 border-l border-primary/20 pl-3' : 'space-y-2'}>
+                {group.agents.map((agent, i) => {
+                  const isSelected = selected.type === 'subagent' && selected.agentId === agent.agentId
+
+                  return (
+                    <div
+                      key={agent.agentId}
+                      className="rounded-lg p-3 cursor-pointer transition-all relative"
+                      style={{
+                        background: isSelected ? 'rgba(0,229,255,0.08)' : 'rgba(12,14,22,0.6)',
+                        border: `2px solid ${isSelected ? 'var(--color-secondary)' : 'rgba(255,180,50,0.06)'}`,
+                      }}
+                      onClick={() => onSelect({ type: 'subagent', agentId: agent.agentId })}
+                    >
+                      {/* Branch connector */}
+                      {!group.isParallel && (
+                        <div
+                          className="absolute -left-[22px] top-[14px] w-[18px] h-0"
+                          style={{ borderTop: '2px solid rgba(255,180,50,0.12)' }}
+                        />
+                      )}
+
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-[11px]">&#9881;</span>
+                        <span className="text-[11px] px-1.5 py-0.5 rounded border border-secondary/30 text-secondary font-medium">
+                          {agent.agentType}
+                        </span>
+                        <span className="text-[10px] text-text-muted ml-auto">
+                          {!group.isParallel && agent.timestamp && (
+                            <>{formatDate(agent.timestamp)} {formatTime(agent.timestamp)} &middot; </>
+                          )}
+                          {agent.messageCount} msgs
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-text mt-1 line-clamp-2">
+                        {agent.prompt.slice(0, 120) || `Agent ${i + 1}`}
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
-            )
-          })}
+            </div>
+          ))}
         </div>
       )}
     </div>
