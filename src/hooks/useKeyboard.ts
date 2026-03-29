@@ -18,7 +18,7 @@ export function useKeyboard() {
         return
       }
 
-      // Escape — close modals first, then panels
+      // Escape — close modals first, then deselect session
       if (e.key === 'Escape') {
         // Modals handle their own Escape — don't double-fire
         if (state.chatModalOpen || state.ganttOpen || state.subagentTreeOpen || state.commandPaletteOpen) {
@@ -26,36 +26,34 @@ export function useKeyboard() {
         }
         if (state.selectedSessionId) {
           dispatch({ type: 'DESELECT_SESSION' })
-        } else if (state.leftDrawerOpen) {
-          dispatch({ type: 'TOGGLE_LEFT_DRAWER' })
-        } else if (state.bottomTrayOpen) {
-          dispatch({ type: 'TOGGLE_BOTTOM_TRAY' })
+        }
+        if (state.selectedProjectName) {
+          dispatch({ type: 'DESELECT_PROJECT' })
         }
         return
       }
 
-      // [ — toggle left drawer
-      if (e.key === '[') {
-        dispatch({ type: 'TOGGLE_LEFT_DRAWER' })
+      // C — open chat modal for selected session
+      if (e.key === 'c' && state.selectedSessionId && !state.chatModalOpen) {
+        dispatch({ type: 'OPEN_CHAT_MODAL' })
         return
       }
 
-      // ] — toggle right drawer
-      if (e.key === ']') {
-        if (state.selectedSessionId) {
-          dispatch({ type: 'TOGGLE_RIGHT_DRAWER' })
-        }
+      // T — open tools gantt for selected session
+      if (e.key === 't' && state.selectedSessionId && !state.ganttOpen) {
+        dispatch({ type: 'OPEN_GANTT' })
         return
       }
 
-      // ` — toggle bottom tray
-      if (e.key === '`') {
-        dispatch({ type: 'TOGGLE_BOTTOM_TRAY' })
+      // A — open agents tree for selected session
+      if (e.key === 'a' && state.selectedSessionId && !state.subagentTreeOpen) {
+        dispatch({ type: 'OPEN_SUBAGENT_TREE' })
         return
       }
     }
 
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
+    // Listen on window AND document to catch events even when canvas has focus
+    window.addEventListener('keydown', handleKeyDown, true)
+    return () => window.removeEventListener('keydown', handleKeyDown, true)
   }, [dispatch, state])
 }

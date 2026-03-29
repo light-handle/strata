@@ -157,11 +157,10 @@ Click a project tile to drill in. Click a session card to see details and fly to
 | Key | Action |
 |-----|--------|
 | `Cmd+K` | Command palette (search sessions, projects, actions) |
-| `[` | Toggle sessions panel |
-| `]` | Toggle detail panel |
-| `` ` `` | Toggle analytics tray |
-| `Esc` | Close active panel |
-| `Shift+Space` | Reset camera to overview |
+| `C` | Open Chat modal for selected session |
+| `T` | Open Tools Gantt chart for selected session |
+| `A` | Open Agents tree for selected session |
+| `Esc` | Close active modal / deselect session / deselect project |
 
 ---
 
