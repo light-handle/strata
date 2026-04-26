@@ -199,6 +199,16 @@ strata/
 
 ---
 
+## Roadmap
+
+### Context Window Visualization (planned)
+Per-turn context size chart showing how the context window fills, compacts, and grows across a session. Stacked breakdown of cache-read vs cache-create vs fresh input tokens. Click any turn to see the exact context pressure when Claude generated that response.
+
+### Session Evals & Analytics (planned)
+Build on top of context data for operational evaluation: tool error rates, retry patterns, cache efficiency scores, cost estimation (tokens × model pricing), session efficiency metrics (output/total token ratio), and context compaction event detection. Foundation for understanding "was this session worth the tokens?"
+
+---
+
 ## License
 
 MIT
